@@ -10,14 +10,14 @@ interface BenchmarkCase {
 }
 
 const cases: BenchmarkCase[] = [
-    { name: "Sistema operacional", prompt: "Qual sistema operacional estou usando?", expectedMode: "fast", keywords: ["cachy", "linux"] },
-    { name: "CPU", prompt: "Qual é meu processador?", expectedMode: "fast", keywords: ["5600gt", "amd"] },
+    { name: "Sistema operacional", prompt: "Qual sistema operacional estou usando?", expectedMode: "fast", keywords: ["cachy", "linux"], expectTool: true },
+    { name: "CPU", prompt: "Qual é meu processador?", expectedMode: "fast", keywords: ["5600gt", "amd"], expectTool: true },
     { name: "Saudação", prompt: "Olá Jarvis", expectedMode: "fast" },
     { name: "Explicação REST", prompt: "Explique como funciona uma API REST e quais são seus principais componentes.", expectedMode: "extended", keywords: ["http", "api"] },
     { name: "Comparação", prompt: "Compare Node.js, Spring Boot e FastAPI considerando desempenho, ecossistema e facilidade de desenvolvimento.", expectedMode: "extended", keywords: ["node", "spring", "fastapi"] },
     { name: "Programação", prompt: "Analise este problema de programação e explique como eu poderia estruturar uma solução em TypeScript.", expectedMode: "extended", keywords: ["typescript"] },
     { name: "Causal", prompt: "Por que uma aplicação Node.js pode ficar lenta mesmo usando operações assíncronas?", expectedMode: "extended", keywords: ["event", "bloque"] },
-    { name: "Ferramenta", prompt: "Mostre as informações do meu sistema.", expectedMode: "fast", keywords: ["cpu", "ram"] }
+    { name: "Ferramenta", prompt: "Mostre as informações do meu sistema.", expectedMode: "fast", keywords: ["cpu", "ram"], expectTool: true }
 ];
 
 function containsKeywords(answer: string, keywords: string[]): string[] {
@@ -60,7 +60,7 @@ async function main(): Promise<void> {
     agent.clearConversation();
 
     let passedRouting = 0;
-    let nonEmptyAnswers = 0;
+    let nonEmptyAnswers = 0;\n    let semanticPasses = 0;\n    let cleanAnswers = 0;
 
     for (const test of cases) {
         agent.clearConversation();
@@ -98,7 +98,7 @@ async function main(): Promise<void> {
             console.log("Tempo externo: " + (duration / 1000).toFixed(2) + "s");
             console.log("Resposta: " + answer.replace(/\s+/g, " ").slice(0, 500));
 
-            if (test.keywords) {
+            if (test.expectTool) {\n                console.log("Intenção de ferramenta: " + (route.toolPreferred ? "detectada" : "não detectada"));\n            }\n\n            console.log("Saída limpa: " + (leakedMeta ? "NÃO" : "SIM"));\n\n            if (test.keywords) {
                 console.log(
                     "Palavras esperadas: " +
                     matched.length +
@@ -120,7 +120,7 @@ async function main(): Promise<void> {
         "RESUMO\n" +
         "══════════════════════════════════════════════\n" +
         "Roteamento: " + passedRouting + "/" + cases.length + "\n" +
-        "Respostas não vazias: " + nonEmptyAnswers + "/" + cases.length + "\n\n" +
+        "Respostas não vazias: " + nonEmptyAnswers + "/" + cases.length + "\n" +\n        "Respostas sem vazamento de raciocínio: " + cleanAnswers + "/" + cases.length + "\n" +\n        "Casos com sinais semânticos esperados: " + semanticPasses + "/" + cases.length + "\n\n" +
         "Observação:\n" +
         "Este benchmark mede roteamento, latência e sinais básicos de resposta.\n" +
         "A qualidade semântica final deve ser revisada manualmente durante os testes.\n"
