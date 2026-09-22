@@ -23,8 +23,8 @@ import {
 
 const MAX_HISTORY_MESSAGES = 24;
 const FAST_MAX_TOKENS = 96;
-const EXTENDED_MAX_TOKENS = 768;
-const EMPTY_EXTENDED_RETRY_TOKENS = 256;
+const EXTENDED_MAX_TOKENS = 384;
+const EMPTY_EXTENDED_RETRY_TOKENS = 192;
 const EXTENDED_THINKING =
     process.env.JARVIS_EXTENDED_THINK === "true";
 
@@ -47,7 +47,7 @@ Regras:
 - Não diga que vai verificar novamente.
 - Quando uma ferramenta retornar uma informação, use o resultado diretamente na resposta.
 - Não escreva pensamentos, rascunhos ou comentários sobre como chegou à resposta.
-- Não comece respostas com frases como "Okay, the user...", "Let me...", "I need to..." ou equivalentes.
+- Use /no_think quando não houver raciocínio deliberado solicitado.\n- Gere somente a resposta final; nunca escreva pensamentos, rascunhos ou meta-comentários.\n- Não comece respostas com frases como "Okay, the user...", "Let me...", "I need to..." ou equivalentes.
 `;
 
 export interface AgentOptions {
@@ -126,6 +126,32 @@ export class JarvisAgent {
     async ask(userMessage: string): Promise<string> {
         const route = classifyMessage(userMessage);
         const tracker = new PerformanceTracker();
+        const directTool = resolveDirectToolIntent(userMessage);
+
+        if (directTool) {
+            tracker.recordToolCall();
+            console.log(
+                "[Tool] " + directTool.toolName + " | execução determinística"
+            );
+
+            const result = await executeTool(
+                directTool.toolName,
+                directTool.args,
+                this.context
+            );
+
+            const answer = formatDirectToolResult(
+                directTool.type,
+                result
+            );
+
+            console.log(
+                formatPerformance(tracker.snapshot(route.mode))
+            );
+
+            return answer;
+        }
+
         const model = await this.resolveModel(
             route.mode,
             route.toolPreferred === true
@@ -154,7 +180,7 @@ export class JarvisAgent {
 
         this.trimHistory();
 
-        const tools = getOllamaTools();
+        // Só envie schemas de ferramentas quando a mensagem realmente pode exigir\n        // uma ferramenta. Isso reduz o prompt de toda conversa normal.\n        const tools = route.toolPreferred\n            ? getOllamaTools()\n            : undefined;
         const think =
             route.mode === "extended" &&
             EXTENDED_THINKING;
