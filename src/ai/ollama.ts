@@ -215,6 +215,11 @@ export interface ChatOptions {
     numPredict?: number;
 }
 
+type OllamaChatMessage = Parameters<typeof ollama.chat>[0]["messages"] extends
+    Array<infer Message>
+    ? Message
+    : never;
+
 export async function chat(
     messages: Array<{
         role: "system" | "user" | "assistant" | "tool";
@@ -232,14 +237,20 @@ export async function chat(
     tools?: any[],
     options: ChatOptions = {}
 ) {
-    const normalizedMessages = messages.map(message => ({
-        ...message,
+    const normalizedMessages: OllamaChatMessage[] = messages.map(message => ({
+        role: message.role,
+        content: message.content,
+        ...(message.tool_name
+            ? { tool_name: message.tool_name }
+            : {}),
+        ...(message.thinking
+            ? { thinking: message.thinking }
+            : {}),
         ...(message.tool_calls
             ? {
                 tool_calls: message.tool_calls.map(toolCall => ({
-                    ...toolCall,
                     function: {
-                        ...toolCall.function,
+                        name: toolCall.function.name,
                         arguments:
                             typeof toolCall.function.arguments === "string"
                                 ? parseToolArguments(toolCall.function.arguments)
@@ -248,7 +259,7 @@ export async function chat(
                 }))
             }
             : {})
-    }));
+    })) as OllamaChatMessage[];
 
     return ollama.chat({
         model: modelName,
