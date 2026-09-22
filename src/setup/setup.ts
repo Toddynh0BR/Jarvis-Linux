@@ -22,7 +22,6 @@ import {
     printSystemInfo,
     commandExists,
     getCommandVersion,
-    runCommand,
     type SystemInfo
 } from "./diagnostics.js";
 import {
@@ -44,7 +43,7 @@ async function askConfirmation(question: string): Promise<boolean> {
     const rl = readline.createInterface({ input, output });
 
     try {
-        const answer = await rl.question(`${question} [s/N] `);
+        const answer = await rl.question(question + " [s/N] ");
         return ["s", "sim", "y", "yes"].includes(
             answer.trim().toLowerCase()
         );
@@ -64,7 +63,7 @@ async function installOllama(): Promise<boolean> {
         return false;
     }
 
-    const child = await new Promise<number>((resolve, reject) => {
+    const exitCode = await new Promise<number>((resolve, reject) => {
         const child = spawn(
             "sh",
             ["-c", "curl -fsSL https://ollama.com/install.sh | sh"],
@@ -75,12 +74,15 @@ async function installOllama(): Promise<boolean> {
         child.on("close", code => resolve(code ?? 1));
     });
 
-    return child === 0;
+    return exitCode === 0;
 }
 
 export async function performSetup(
     db: Database.Database,
-    options: { forceCompatibilityCheck?: boolean } = {}
+    options: {
+        forceCompatibilityCheck?: boolean;
+        validateModel?: boolean;
+    } = {}
 ): Promise<SetupResult> {
     const cached = getLatestCompatibility(db);
 
@@ -119,6 +121,7 @@ export async function performSetup(
 
             system = await runDiagnostics();
             compatibility = checkCompatibility(system);
+
             printSystemInfo(system);
             printCompatibility(compatibility);
 
@@ -146,7 +149,9 @@ export async function performSetup(
         };
     }
 
-    const ollamaReady = await ensureOllamaSetup(db);
+    const ollamaReady = await ensureOllamaSetup(db, {
+        validateModel: options.validateModel ?? true
+    });
 
     return {
         compatible: true,
@@ -157,7 +162,10 @@ export async function performSetup(
 }
 
 export async function ensureOllamaSetup(
-    db: Database.Database
+    db: Database.Database,
+    options: {
+        validateModel?: boolean;
+    } = {}
 ): Promise<boolean> {
     let installed = await commandExists("ollama");
 
@@ -170,13 +178,17 @@ export async function ensureOllamaSetup(
         return false;
     }
 
-    const version = await getCommandVersion("ollama", ["--version"]);
+    const version = await getCommandVersion(
+        "ollama",
+        ["--version"]
+    );
 
     const apiReady = await ensureOllamaReady();
 
     if (!apiReady) {
         console.error(
-            `\n✗ A API do Ollama não está disponível. Endpoint esperado: http://127.0.0.1:11434`
+            "\n✗ A API do Ollama não está disponível. " +
+            "Endpoint esperado: http://127.0.0.1:11434"
         );
         return false;
     }
@@ -187,7 +199,7 @@ export async function ensureOllamaSetup(
 
     saveOllamaInfo(db, {
         installed: state.installed,
-        version: version,
+        version,
         serviceRunning: state.serviceRunning,
         apiAvailable: state.apiAvailable,
         modelInstalled: modelReady,
@@ -196,6 +208,10 @@ export async function ensureOllamaSetup(
 
     if (!modelReady) {
         return false;
+    }
+
+    if (options.validateModel === false) {
+        return true;
     }
 
     const aiReady = await testModel();
@@ -212,21 +228,24 @@ export async function runSetupCommand(): Promise<void> {
     const db = initializeDatabase();
 
     try {
-        console.log(`
-╔══════════════════════════════════════════════╗
-║                 J A R V I S                  ║
-║                  SETUP                       ║
-╚══════════════════════════════════════════════╝
-`);
+        console.log(
+            "\n╔══════════════════════════════════════════════╗\n" +
+            "║                 J A R V I S                  ║\n" +
+            "║                  SETUP                       ║\n" +
+            "╚══════════════════════════════════════════════╝\n"
+        );
 
-        console.log(`Banco: ${DATABASE_PATH}`);
+        console.log("Banco: " + DATABASE_PATH);
 
         const result = await performSetup(db, {
-            forceCompatibilityCheck: true
+            forceCompatibilityCheck: true,
+            validateModel: true
         });
 
         if (!result.compatible) {
-            console.log("\nO Jarvis não pode continuar neste computador.");
+            console.log(
+                "\nO Jarvis não pode continuar neste computador."
+            );
             process.exitCode = 1;
             return;
         }
@@ -243,7 +262,10 @@ export async function runSetupCommand(): Promise<void> {
     }
 }
 
-if (process.argv[1] && process.argv[1].endsWith("setup.ts")) {
+if (
+    process.argv[1] &&
+    process.argv[1].endsWith("setup.ts")
+) {
     runSetupCommand().catch(error => {
         console.error("\nErro fatal no setup:", error);
         process.exit(1);
