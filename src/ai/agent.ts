@@ -16,6 +16,7 @@ import {
     classifyMessage,
     type ResponseMode
 } from "./router";
+import { resolveDirectToolIntent } from "../tools/intent";
 import {
     PerformanceTracker,
     formatPerformance
@@ -204,7 +205,7 @@ export class JarvisAgent {
 
             const assistantMessage = response.message;
             const toolCalls = assistantMessage.tool_calls ?? [];
-            const content = assistantMessage.content?.trim() ?? "";
+            const content = cleanAssistantContent(assistantMessage.content?.trim() ?? "");
 
             if (toolCalls.length === 0 && !content && route.mode === "extended") {
                 console.log(
@@ -303,6 +304,48 @@ export class JarvisAgent {
                 content: SYSTEM_PROMPT
             }
         ];
+    }
+}
+
+function cleanAssistantContent(content: string): string {
+    return content
+        .replace(/<think>[\\s\\S]*?<\\/think>/gi, "")
+        .trim();
+}
+
+function formatDirectToolResult(
+    type: "systemStatus" | "openUrl",
+    result: string
+): string {
+    try {
+        const data = JSON.parse(result) as Record<string, unknown>;
+
+        if (type === "openUrl") {
+            if (data.success === true) {
+                return String(data.message ?? "URL aberta com sucesso.");
+            }
+
+            return String(data.error ?? "Não foi possível abrir a URL.");
+        }
+
+        if (data.error) {
+            return "Não consegui obter as informações do sistema: " +
+                String(data.error);
+        }
+
+        return [
+            "Informações do sistema:",
+            `• Sistema: ${String(data.distribution ?? data.os ?? "desconhecido")}`,
+            `• Kernel: ${String(data.kernel ?? "desconhecido")}`,
+            `• CPU: ${String(data.cpu ?? "desconhecida")}`,
+            `• Núcleos/threads: ${String(data.cores ?? "?")}/${String(data.threads ?? "?")}`,
+            `• RAM: ${String(data.ramGB ?? "?")} GB`,
+            `• RAM disponível: ${String(data.availableRamGB ?? "?")} GB`,
+            `• GPU: ${String(data.gpu ?? "desconhecida")}`,
+            `• Armazenamento livre: ${String(data.storageFreeGB ?? "?")} GB`
+        ].join("\\n");
+    } catch {
+        return result;
     }
 }
 
