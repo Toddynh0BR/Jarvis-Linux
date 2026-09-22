@@ -1,5 +1,3 @@
-import { classifyMessage } from "../ai/router";
-
 export type DirectToolIntent =
     | {
         type: "systemStatus";
@@ -17,7 +15,7 @@ const URL_PATTERN = /https?:\/\/[^\s<>"']+/i;
 const SYSTEM_STATUS_PATTERNS = [
     /\b(meu|minha|meus|minhas)\s+(sistema|processador|cpu|ram|mem[oó]ria|gpu|placa de v[ií]deo|kernel)\b/i,
     /\b(sistema operacional|informa[cç][oõ]es do sistema|status do sistema)\b/i,
-    /\b(mostre|mostrar|ver|veja)\s+(as?\s+)?informa[cç][oõ]es\s+(do|sobre o)\s+sistema\b/i
+    /\b(mostre|mostrar|ver|veja)\s+(as?\s+)?informa[cç][oõ]es\s+(do|sobre o)\s+(meu\s+)?sistema\b/i
 ];
 
 const OPEN_URL_PATTERNS = [
@@ -27,7 +25,7 @@ const OPEN_URL_PATTERNS = [
 export function resolveDirectToolIntent(message: string): DirectToolIntent | null {
     const normalized = message.trim();
 
-    if (!normalized || !classifyMessage(normalized).toolPreferred) {
+    if (!normalized) {
         return null;
     }
 
