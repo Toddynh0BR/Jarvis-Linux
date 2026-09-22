@@ -110,6 +110,42 @@ export function initializeDatabase(): Database.Database {
         );
     }
 
+    // system_info representa o estado atual da máquina, não um histórico.
+    // Normaliza instalações anteriores que possam ter criado múltiplos registros,
+    // preservando apenas o diagnóstico mais recente no id fixo 1.
+    const latestSystemInfo = db
+        .prepare("SELECT * FROM system_info ORDER BY id DESC LIMIT 1")
+        .get() as Record<string, unknown> | undefined;
+
+    if (latestSystemInfo) {
+        db.transaction(() => {
+            db.prepare("DELETE FROM system_info").run();
+
+            db.prepare(``
+                INSERT INTO system_info (
+                    id, username, hostname, home_directory,
+                    os, distribution, distribution_version, pretty_distribution_name,
+                    kernel, architecture, desktop_environment, window_manager,
+                    init_system, shell_current, shell_default,
+                    cpu_model, cpu_cores, cpu_threads,
+                    ram_total_bytes, ram_available_bytes, gpu,
+                    root_filesystem, root_total_bytes, root_free_bytes,
+                    package_manager, created_at
+                )
+                VALUES (
+                    1, @username, @hostname, @home_directory,
+                    @os, @distribution, @distribution_version, @pretty_distribution_name,
+                    @kernel, @architecture, @desktop_environment, @window_manager,
+                    @init_system, @shell_current, @shell_default,
+                    @cpu_model, @cpu_cores, @cpu_threads,
+                    @ram_total_bytes, @ram_available_bytes, @gpu,
+                    @root_filesystem, @root_total_bytes, @root_free_bytes,
+                    @package_manager, @created_at
+                )
+            ``).run(latestSystemInfo);
+        })();
+    }
+
     const compatibilityColumns = db
         .prepare("PRAGMA table_info(compatibility)")
         .all() as Array<{ name: string }>;
@@ -180,6 +216,7 @@ export function saveSystemInfo(
 ): void {
     db.prepare(`
         INSERT INTO system_info (
+            id,
             username, hostname, home_directory,
             os, distribution, distribution_version, pretty_distribution_name,
             kernel, architecture, desktop_environment, window_manager,
@@ -190,6 +227,7 @@ export function saveSystemInfo(
             package_manager, created_at
         )
         VALUES (
+            1,
             @username, @hostname, @homeDirectory,
             @os, @distribution, @distributionVersion, @prettyDistributionName,
             @kernel, @architecture, @desktopEnvironment, @windowManager,
@@ -199,6 +237,33 @@ export function saveSystemInfo(
             @rootFilesystem, @rootTotalBytes, @rootFreeBytes,
             @packageManager, @createdAt
         )
+        ON CONFLICT(id)
+        DO UPDATE SET
+            username = excluded.username,
+            hostname = excluded.hostname,
+            home_directory = excluded.home_directory,
+            os = excluded.os,
+            distribution = excluded.distribution,
+            distribution_version = excluded.distribution_version,
+            pretty_distribution_name = excluded.pretty_distribution_name,
+            kernel = excluded.kernel,
+            architecture = excluded.architecture,
+            desktop_environment = excluded.desktop_environment,
+            window_manager = excluded.window_manager,
+            init_system = excluded.init_system,
+            shell_current = excluded.shell_current,
+            shell_default = excluded.shell_default,
+            cpu_model = excluded.cpu_model,
+            cpu_cores = excluded.cpu_cores,
+            cpu_threads = excluded.cpu_threads,
+            ram_total_bytes = excluded.ram_total_bytes,
+            ram_available_bytes = excluded.ram_available_bytes,
+            gpu = excluded.gpu,
+            root_filesystem = excluded.root_filesystem,
+            root_total_bytes = excluded.root_total_bytes,
+            root_free_bytes = excluded.root_free_bytes,
+            package_manager = excluded.package_manager,
+            created_at = excluded.created_at
     `).run({
         ...system,
         createdAt: new Date().toISOString()
