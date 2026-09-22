@@ -206,19 +206,48 @@ export async function testModel(
     }
 }
 
+export type ThinkingMode = boolean | "low" | "medium" | "high";
+
+export interface ChatOptions {
+    think?: ThinkingMode;
+    keepAlive?: string | number;
+    temperature?: number;
+    numPredict?: number;
+}
+
 export async function chat(
     messages: Array<{
         role: "system" | "user" | "assistant" | "tool";
         content: string;
         tool_name?: string;
+        thinking?: string;
+        tool_calls?: Array<{
+            function: {
+                name: string;
+                arguments: Record<string, unknown>;
+            };
+        }>;
     }>,
     modelName = OLLAMA_MODEL,
-    tools?: any[]
+    tools?: any[],
+    options: ChatOptions = {}
 ) {
     return ollama.chat({
         model: modelName,
         messages,
-        tools
+        tools,
+        stream: false,
+        think: options.think ?? false,
+        keep_alive:
+            options.keepAlive ??
+            process.env.JARVIS_KEEP_ALIVE ??
+            "10m",
+        options: {
+            temperature: options.temperature ?? 0.2,
+            ...(options.numPredict
+                ? { num_predict: options.numPredict }
+                : {})
+        }
     });
 }
 
