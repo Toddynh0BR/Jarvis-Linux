@@ -9,7 +9,8 @@
     "diagnose": "tsx src/setup/diagnostics.ts",
     "compatibility": "tsx src/setup/compatibility.ts",
     "build": "tsc",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "benchmark": "tsx src/benchmark/benchmark.ts"
   },
   "keywords": [
     "jarvis",
