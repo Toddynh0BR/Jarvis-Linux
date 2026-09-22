@@ -47,7 +47,7 @@ Regras:
 - Nunca comece com "Okay, the user...", "Let me...", "I need to..." ou equivalentes.
 - Não narre seu processo de elaboração da resposta.
 - Não comece a resposta descrevendo o pedido do usuário.
-- Não use frases como "Okay, the user...", "Let me...", "I need to...", "First, I..." ou equivalentes.
+- Não use frases como "First, I..." ou equivalentes.
 - Comece diretamente pela resposta ao usuário.
 `;
 
