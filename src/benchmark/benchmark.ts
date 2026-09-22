@@ -82,7 +82,7 @@ function containsKeywords(answer: string, keywords: string[]): string[] {
 }
 
 function containsLeakedMeta(answer: string): boolean {
-    return /\b(okay, the user|let me (think|check)|i need to|first, i|o usuário está pedindo|vou analisar|preciso verificar)\b/i.test(
+    return /(?:okay, the user|the user (?:is|wants|asks)|the user is asking|let me (?:think|check)|i need to|first, i|hmm,|wait,|let's (?:think|see)|o usuário está pedindo|vou analisar|preciso verificar)/i.test(
         answer
     );
 }
