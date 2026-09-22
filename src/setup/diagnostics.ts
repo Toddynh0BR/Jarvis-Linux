@@ -86,7 +86,8 @@ export async function getCommandVersion(
     args: string[] = ["--version"]
 ): Promise<string | null> {
     const result = await runCommand(command, args);
-    const line = `${result.stdout}\n${result.stderr}`
+
+    const line = (result.stdout + "\n" + result.stderr)
         .split("\n")
         .map(value => value.trim())
         .find(Boolean);
@@ -99,7 +100,7 @@ export function bytesToGB(bytes: number): number {
 }
 
 export function formatGB(bytes: number): string {
-    return `${bytesToGB(bytes).toFixed(1)} GB`;
+    return bytesToGB(bytes).toFixed(1) + " GB";
 }
 
 function parseOsRelease(): Pick<
@@ -120,13 +121,12 @@ function parseOsRelease(): Pick<
                 .replace(/"$/, "");
         }
 
-        // CachyOS historically may not expose VERSION_ID consistently.
-        // VERSION can be useful as a fallback without assuming a fixed format.
         return {
             distribution: values.ID ?? "unknown",
             distributionVersion:
                 values.VERSION_ID ??
                 values.VERSION ??
+                values.BUILD_ID ??
                 "unknown",
             prettyDistributionName:
                 values.PRETTY_NAME ??
@@ -153,7 +153,7 @@ function getDefaultShell(): string {
         const passwd = fs.readFileSync("/etc/passwd", "utf8");
         const line = passwd
             .split("\n")
-            .find(value => value.startsWith(`${username}:`));
+            .find(value => value.startsWith(username + ":"));
 
         const shell = line?.split(":")[6];
         return shell ? path.basename(shell) : "unknown";
@@ -171,12 +171,15 @@ async function getCPUInfo(): Promise<{
     const fallbackModel = fallback[0]?.model?.trim() ?? "Unknown CPU";
 
     if (await commandExists("lscpu")) {
-        const result = await runCommand("lscpu");
+        const modelResult = await runCommand("lscpu");
+        const topologyResult = await runCommand("lscpu", [
+            "-p=CPU,CORE,SOCKET"
+        ]);
 
-        if (result.code === 0) {
+        if (modelResult.code === 0) {
             const values = new Map<string, string>();
 
-            for (const line of result.stdout.split("\n")) {
+            for (const line of modelResult.stdout.split("\n")) {
                 const index = line.indexOf(":");
                 if (index === -1) continue;
 
@@ -184,6 +187,35 @@ async function getCPUInfo(): Promise<{
                     line.slice(0, index).trim(),
                     line.slice(index + 1).trim()
                 );
+            }
+
+            const model = values.get("Model name") ?? fallbackModel;
+
+            if (topologyResult.code === 0) {
+                const rows = topologyResult.stdout
+                    .split("\n")
+                    .map(line => line.trim())
+                    .filter(line => line && !line.startsWith("#"));
+
+                const logicalThreads = rows.length;
+                const physicalCores = new Set(
+                    rows.map(line => {
+                        const [cpu, core, socket] = line.split(",");
+                        return (
+                            (socket ?? "0") +
+                            ":" +
+                            (core ?? cpu ?? line)
+                        );
+                    })
+                ).size;
+
+                if (logicalThreads > 0 && physicalCores > 0) {
+                    return {
+                        model,
+                        cores: physicalCores,
+                        threads: logicalThreads
+                    };
+                }
             }
 
             const threads = Number(values.get("CPU(s)"));
@@ -196,7 +228,7 @@ async function getCPUInfo(): Promise<{
                 Number.isFinite(sockets)
             ) {
                 return {
-                    model: values.get("Model name") ?? fallbackModel,
+                    model,
                     cores: coresPerSocket * sockets,
                     threads
                 };
@@ -204,7 +236,6 @@ async function getCPUInfo(): Promise<{
         }
     }
 
-    // Fallback: Node exposes logical CPUs reliably, but not physical cores.
     return {
         model: fallbackModel,
         cores: fallback.length,
@@ -245,6 +276,7 @@ async function getFilesystemInfo(): Promise<{
     }
 
     const lines = result.stdout.trim().split("\n");
+
     if (lines.length < 2) {
         return {
             filesystem: "unknown",
@@ -280,7 +312,9 @@ function getWindowManager(): string {
 
 async function getInitSystem(): Promise<string> {
     if (await commandExists("systemctl")) {
-        const result = await runCommand("systemctl", ["is-system-running"]);
+        const result = await runCommand("systemctl", [
+            "is-system-running"
+        ]);
 
         if (
             result.code === 0 ||
@@ -336,13 +370,20 @@ async function detectTools(): Promise<Record<string, ToolInfo>> {
 
     const tools: Record<string, ToolInfo> = {};
 
+    // Alguns comandos são aplicações gráficas. Consultar --version pode
+    // iniciar o aplicativo, portanto a detecção deles não executa o binário.
+    const noVersionProbe = new Set(["steam"]);
+
     for (const command of commands) {
         const installed = await commandExists(command);
 
         tools[command] = {
             installed,
             path: installed ? await getCommandPath(command) : null,
-            version: installed ? await getCommandVersion(command) : null
+            version:
+                installed && !noVersionProbe.has(command)
+                    ? await getCommandVersion(command)
+                    : null
         };
     }
 
@@ -388,69 +429,90 @@ export async function runDiagnostics(): Promise<SystemInfo> {
 }
 
 export function printSystemInfo(system: SystemInfo): void {
-    console.log(`
-╔══════════════════════════════════════════════╗
-║              JARVIS SYSTEM CHECK             ║
-╚══════════════════════════════════════════════╝
-`);
+    console.log(
+        "\n╔══════════════════════════════════════════════╗\n" +
+        "║              JARVIS SYSTEM CHECK             ║\n" +
+        "╚══════════════════════════════════════════════╝\n"
+    );
 
     console.log("Sistema");
     console.log("──────────────────────────────────────────────");
-    console.log(`OS:              ${system.os}`);
-    console.log(`Distribuição:    ${system.prettyDistributionName}`);
-    console.log(`Versão:          ${system.distributionVersion}`);
-    console.log(`Kernel:          ${system.kernel}`);
-    console.log(`Arquitetura:     ${system.architecture}`);
-    console.log(`Desktop:         ${system.desktopEnvironment}`);
-    console.log(`Window Manager:  ${system.windowManager}`);
-    console.log(`Init:             ${system.initSystem}`);
+    console.log("OS:              " + system.os);
+    console.log("Distribuição:    " + system.prettyDistributionName);
+    console.log("Versão:          " + system.distributionVersion);
+    console.log("Kernel:          " + system.kernel);
+    console.log("Arquitetura:     " + system.architecture);
+    console.log("Desktop:         " + system.desktopEnvironment);
+    console.log("Window Manager:  " + system.windowManager);
+    console.log("Init:             " + system.initSystem);
 
     console.log("\nHardware");
     console.log("──────────────────────────────────────────────");
-    console.log(`CPU:             ${system.cpuModel}`);
-    console.log(`Cores:           ${system.cpuCores}`);
-    console.log(`Threads:         ${system.cpuThreads}`);
-    console.log(`RAM total:       ${formatGB(system.ramTotalBytes)}`);
-    console.log(`RAM disponível:  ${formatGB(system.ramAvailableBytes)}`);
-    console.log(`GPU:             ${system.gpu}`);
+    console.log("CPU:             " + system.cpuModel);
+    console.log("Cores:           " + system.cpuCores);
+    console.log("Threads:         " + system.cpuThreads);
+    console.log("RAM total:       " + formatGB(system.ramTotalBytes));
+    console.log("RAM disponível:  " + formatGB(system.ramAvailableBytes));
+    console.log("GPU:             " + system.gpu);
 
     console.log("\nArmazenamento");
     console.log("──────────────────────────────────────────────");
-    console.log(`Filesystem:      ${system.rootFilesystem}`);
-    console.log(`Espaço total:    ${formatGB(system.rootTotalBytes)}`);
-    console.log(`Espaço livre:    ${formatGB(system.rootFreeBytes)}`);
+    console.log("Filesystem:      " + system.rootFilesystem);
+    console.log("Espaço total:    " + formatGB(system.rootTotalBytes));
+    console.log("Espaço livre:    " + formatGB(system.rootFreeBytes));
 
     console.log("\nShell");
     console.log("──────────────────────────────────────────────");
-    console.log(`Atual:           ${system.shellCurrent}`);
-    console.log(`Padrão:          ${system.shellDefault}`);
+    console.log("Atual:           " + system.shellCurrent);
+    console.log("Padrão:          " + system.shellDefault);
 
     console.log("\nAmbiente");
     console.log("──────────────────────────────────────────────");
-    console.log(`Usuário:         ${system.username}`);
-    console.log(`Home:            ${system.homeDirectory}`);
-    console.log(`Hostname:        ${system.hostname}`);
-    console.log(`Package Manager: ${system.packageManager}`);
+    console.log("Usuário:         " + system.username);
+    console.log("Home:            " + system.homeDirectory);
+    console.log("Hostname:        " + system.hostname);
+    console.log("Package Manager: " + system.packageManager);
 
     console.log("\nFerramentas");
     console.log("──────────────────────────────────────────────");
 
     for (const [name, info] of Object.entries(system.tools)) {
         console.log(
-            `${info.installed ? "✓" : "✗"} ${name.padEnd(12)} ${
-                info.version ?? ""
-            }`
+            (info.installed ? "✓" : "✗") +
+            " " +
+            name.padEnd(12) +
+            " " +
+            (info.version ?? "")
         );
     }
 }
 
-// Permite executar o arquivo diretamente com:
-// npm run diagnose
-if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(__filename)) {
-    runDiagnostics()
-        .then(system => printSystemInfo(system))
-        .catch(error => {
-            console.error("\nErro no diagnóstico:", error.message);
-            process.exit(1);
-        });
+async function runDiagnoseCommand(): Promise<void> {
+    const {
+        initializeDatabase,
+        saveSystemInfo,
+        DATABASE_PATH
+    } = await import("../database/database.js");
+
+    const db = initializeDatabase();
+
+    try {
+        const system = await runDiagnostics();
+        printSystemInfo(system);
+        saveSystemInfo(db, system);
+
+        console.log("\n✓ Diagnóstico salvo em " + DATABASE_PATH);
+    } finally {
+        db.close();
+    }
+}
+
+if (
+    process.argv[1] &&
+    path.resolve(process.argv[1]) === path.resolve(__filename)
+) {
+    runDiagnoseCommand().catch(error => {
+        console.error("\nErro no diagnóstico:", error.message);
+        process.exit(1);
+    });
 }
