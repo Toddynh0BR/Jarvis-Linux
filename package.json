@@ -1,14 +1,24 @@
 {
   "name": "jarvis",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Local AI assistant for Linux using Ollama and Qwen3.",
+  "main": "dist/index.js",
   "scripts": {
     "start": "tsx src/index.ts",
-    "diagnose": "tsx src/index.ts",
-    "build": "tsc"
+    "setup": "tsx src/setup/setup.ts",
+    "diagnose": "tsx src/setup/diagnostics.ts",
+    "compatibility": "tsx src/setup/compatibility.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
   },
-  "keywords": [],
+  "keywords": [
+    "jarvis",
+    "ai",
+    "ollama",
+    "qwen",
+    "linux",
+    "assistant"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",

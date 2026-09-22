@@ -1,6 +1,8 @@
 import Database from "better-sqlite3";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import type { SystemInfo } from "../setup/diagnostics.js";
+import type { CompatibilityResult } from "../setup/compatibility";
 
 export const DATA_DIR = path.join(process.cwd(), "data");
 export const DATABASE_PATH = path.join(DATA_DIR, "jarvis.db");
@@ -25,7 +27,6 @@ export function initializeDatabase(): Database.Database {
     ensureDataDirectory();
 
     const db = new Database(DATABASE_PATH);
-
     db.pragma("journal_mode = WAL");
 
     db.exec(`
@@ -37,6 +38,7 @@ export function initializeDatabase(): Database.Database {
             os TEXT NOT NULL,
             distribution TEXT NOT NULL,
             distribution_version TEXT NOT NULL,
+            pretty_distribution_name TEXT NOT NULL DEFAULT 'Unknown Linux',
             kernel TEXT NOT NULL,
             architecture TEXT NOT NULL,
             desktop_environment TEXT,
@@ -92,7 +94,16 @@ export function initializeDatabase(): Database.Database {
         );
     `);
 
-    // Migração simples para bancos criados pela primeira versão.
+    const systemColumns = db
+        .prepare("PRAGMA table_info(system_info)")
+        .all() as Array<{ name: string }>;
+
+    if (!systemColumns.some(column => column.name === "pretty_distribution_name")) {
+        db.exec(
+            "ALTER TABLE system_info ADD COLUMN pretty_distribution_name TEXT NOT NULL DEFAULT 'Unknown Linux'"
+        );
+    }
+
     const compatibilityColumns = db
         .prepare("PRAGMA table_info(compatibility)")
         .all() as Array<{ name: string }>;
@@ -111,13 +122,7 @@ export function getLatestCompatibility(
 ): CompatibilityRecord | null {
     const row = db
         .prepare(`
-            SELECT
-                id,
-                supported,
-                reasons,
-                warnings,
-                check_version,
-                checked_at
+            SELECT id, supported, reasons, warnings, check_version, checked_at
             FROM compatibility
             ORDER BY id DESC
             LIMIT 1
@@ -133,15 +138,13 @@ export function getLatestCompatibility(
           }
         | undefined;
 
-    if (!row) {
-        return null;
-    }
+    if (!row) return null;
 
     return {
         id: row.id,
         supported: row.supported === 1,
-        reasons: JSON.parse(row.reasons) as string[],
-        warnings: JSON.parse(row.warnings) as string[],
+        reasons: JSON.parse(row.reasons),
+        warnings: JSON.parse(row.warnings),
         checkedAt: row.checked_at,
         checkVersion: row.check_version
     };
@@ -149,19 +152,11 @@ export function getLatestCompatibility(
 
 export function saveCompatibility(
     db: Database.Database,
-    result: {
-        supported: boolean;
-        reasons: string[];
-        warnings: string[];
-    }
+    result: CompatibilityResult
 ): void {
     db.prepare(`
         INSERT INTO compatibility (
-            supported,
-            reasons,
-            warnings,
-            check_version,
-            checked_at
+            supported, reasons, warnings, check_version, checked_at
         )
         VALUES (?, ?, ?, ?, ?)
     `).run(
@@ -175,112 +170,39 @@ export function saveCompatibility(
 
 export function saveSystemInfo(
     db: Database.Database,
-    system: {
-        username: string;
-        hostname: string;
-        homeDirectory: string;
-        os: string;
-        distribution: string;
-        distributionVersion: string;
-        kernel: string;
-        architecture: string;
-        desktopEnvironment: string;
-        windowManager: string;
-        initSystem: string;
-        shellCurrent: string;
-        shellDefault: string;
-        cpuModel: string;
-        cpuCores: number;
-        cpuThreads: number;
-        ramTotalBytes: number;
-        ramAvailableBytes: number;
-        gpu: string;
-        rootFilesystem: string;
-        rootTotalBytes: number;
-        rootFreeBytes: number;
-        packageManager: string;
-        tools: Record<string, {
-            installed: boolean;
-            path: string | null;
-            version: string | null;
-        }>;
-    }
+    system: SystemInfo
 ): void {
-    const insertSystem = db.prepare(`
+    db.prepare(`
         INSERT INTO system_info (
-            username,
-            hostname,
-            home_directory,
-            os,
-            distribution,
-            distribution_version,
-            kernel,
-            architecture,
-            desktop_environment,
-            window_manager,
-            init_system,
-            shell_current,
-            shell_default,
-            cpu_model,
-            cpu_cores,
-            cpu_threads,
-            ram_total_bytes,
-            ram_available_bytes,
-            gpu,
-            root_filesystem,
-            root_total_bytes,
-            root_free_bytes,
-            package_manager,
-            created_at
+            username, hostname, home_directory,
+            os, distribution, distribution_version, pretty_distribution_name,
+            kernel, architecture, desktop_environment, window_manager,
+            init_system, shell_current, shell_default,
+            cpu_model, cpu_cores, cpu_threads,
+            ram_total_bytes, ram_available_bytes, gpu,
+            root_filesystem, root_total_bytes, root_free_bytes,
+            package_manager, created_at
         )
         VALUES (
-            @username,
-            @hostname,
-            @homeDirectory,
-            @os,
-            @distribution,
-            @distributionVersion,
-            @kernel,
-            @architecture,
-            @desktopEnvironment,
-            @windowManager,
-            @initSystem,
-            @shellCurrent,
-            @shellDefault,
-            @cpuModel,
-            @cpuCores,
-            @cpuThreads,
-            @ramTotalBytes,
-            @ramAvailableBytes,
-            @gpu,
-            @rootFilesystem,
-            @rootTotalBytes,
-            @rootFreeBytes,
-            @packageManager,
-            @createdAt
+            @username, @hostname, @homeDirectory,
+            @os, @distribution, @distributionVersion, @prettyDistributionName,
+            @kernel, @architecture, @desktopEnvironment, @windowManager,
+            @initSystem, @shellCurrent, @shellDefault,
+            @cpuModel, @cpuCores, @cpuThreads,
+            @ramTotalBytes, @ramAvailableBytes, @gpu,
+            @rootFilesystem, @rootTotalBytes, @rootFreeBytes,
+            @packageManager, @createdAt
         )
-    `);
-
-    insertSystem.run({
+    `).run({
         ...system,
         createdAt: new Date().toISOString()
     });
 
-    const upsertSoftware = db.prepare(`
+    const upsert = db.prepare(`
         INSERT INTO software (
-            name,
-            installed,
-            path,
-            version,
-            updated_at
+            name, installed, path, version, updated_at
         )
-        VALUES (
-            @name,
-            @installed,
-            @path,
-            @version,
-            @updatedAt
-        )
+        VALUES (@name, @installed, @path, @version, @updatedAt)
         ON CONFLICT(name)
         DO UPDATE SET
             installed = excluded.installed,
@@ -289,11 +211,11 @@ export function saveSystemInfo(
             updated_at = excluded.updated_at
     `);
 
-    const transaction = db.transaction(() => {
-        const updatedAt = new Date().toISOString();
+    const updatedAt = new Date().toISOString();
 
+    db.transaction(() => {
         for (const [name, info] of Object.entries(system.tools)) {
-            upsertSoftware.run({
+            upsert.run({
                 name,
                 installed: info.installed ? 1 : 0,
                 path: info.path,
@@ -301,9 +223,74 @@ export function saveSystemInfo(
                 updatedAt
             });
         }
-    });
+    })();
+}
 
-    transaction();
+export function getLatestSystemInfo(
+    db: Database.Database
+): SystemInfo | null {
+    const row = db
+        .prepare(`
+            SELECT *
+            FROM system_info
+            ORDER BY id DESC
+            LIMIT 1
+        `)
+        .get() as any;
+
+    if (!row) return null;
+
+    const softwareRows = db
+        .prepare(`
+            SELECT name, installed, path, version
+            FROM software
+            ORDER BY name
+        `)
+        .all() as Array<{
+            name: string;
+            installed: number;
+            path: string | null;
+            version: string | null;
+        }>;
+
+    const tools: SystemInfo["tools"] = {};
+
+    for (const software of softwareRows) {
+        tools[software.name] = {
+            installed: software.installed === 1,
+            path: software.path,
+            version: software.version
+        };
+    }
+
+    return {
+        username: row.username,
+        hostname: row.hostname,
+        homeDirectory: row.home_directory,
+        os: row.os,
+        distribution: row.distribution,
+        distributionVersion: row.distribution_version,
+        prettyDistributionName:
+            row.pretty_distribution_name ?? row.distribution,
+        kernel: row.kernel,
+        architecture: row.architecture,
+        desktopEnvironment: row.desktop_environment ?? "unknown",
+        windowManager: row.window_manager ?? "unknown",
+        initSystem: row.init_system ?? "unknown",
+        shellCurrent: row.shell_current ?? "unknown",
+        shellDefault: row.shell_default ?? "unknown",
+        cpuModel: row.cpu_model ?? "Unknown CPU",
+        cpuCores: row.cpu_cores ?? 0,
+        cpuThreads: row.cpu_threads ?? 0,
+        ramTotalBytes: row.ram_total_bytes ?? 0,
+        ramAvailableBytes: row.ram_available_bytes ?? 0,
+        gpu: row.gpu ?? "GPU não detectada",
+        rootFilesystem: row.root_filesystem ?? "unknown",
+        rootTotalBytes: row.root_total_bytes ?? 0,
+        rootFreeBytes: row.root_free_bytes ?? 0,
+        packageManager: row.package_manager ?? "unknown",
+        tools
+    };
 }
 
 export function saveOllamaInfo(
@@ -319,24 +306,12 @@ export function saveOllamaInfo(
 ): void {
     db.prepare(`
         INSERT INTO ollama (
-            id,
-            installed,
-            version,
-            service_running,
-            api_available,
-            model_installed,
-            model_name,
-            updated_at
+            id, installed, version, service_running,
+            api_available, model_installed, model_name, updated_at
         )
         VALUES (
-            1,
-            @installed,
-            @version,
-            @serviceRunning,
-            @apiAvailable,
-            @modelInstalled,
-            @modelName,
-            @updatedAt
+            1, @installed, @version, @serviceRunning,
+            @apiAvailable, @modelInstalled, @modelName, @updatedAt
         )
         ON CONFLICT(id)
         DO UPDATE SET
