@@ -72,6 +72,83 @@ function containsKeywords(answer: string, keywords: string[]): string[] {
 }
 
 function containsLeakedMeta(answer: string): boolean {
+    return /\b(okay, the user|let me (think|check)|i need to|first, i|o usuário está pedindo|vou analisar|preciso verificar)\b/i.test(
+        answer
+    );
+}mport { ensureOllamaReady, OLLAMA_MODEL } from "../ai/ollama";
+import { JarvisAgent } from "../ai/agent";
+import { classifyMessage, type ResponseMode } from "../ai/router";
+
+interface BenchmarkCase {
+    name: string;
+    prompt: string;
+    expectedMode: ResponseMode;
+    keywords?: string[];
+    expectTool?: boolean;
+}
+
+const cases: BenchmarkCase[] = [
+    {
+        name: "Sistema operacional",
+        prompt: "Qual sistema operacional estou usando?",
+        expectedMode: "fast",
+        keywords: ["cachy", "linux"],
+        expectTool: true
+    },
+    {
+        name: "CPU",
+        prompt: "Qual é meu processador?",
+        expectedMode: "fast",
+        keywords: ["5600gt", "amd"],
+        expectTool: true
+    },
+    {
+        name: "Saudação",
+        prompt: "Olá Jarvis",
+        expectedMode: "fast"
+    },
+    {
+        name: "Explicação REST",
+        prompt: "Explique como funciona uma API REST e quais são seus principais componentes.",
+        expectedMode: "extended",
+        keywords: ["http", "api"]
+    },
+    {
+        name: "Comparação",
+        prompt: "Compare Node.js, Spring Boot e FastAPI considerando desempenho, ecossistema e facilidade de desenvolvimento.",
+        expectedMode: "extended",
+        keywords: ["node", "spring", "fastapi"]
+    },
+    {
+        name: "Programação",
+        prompt: "Analise este problema de programação e explique como eu poderia estruturar uma solução em TypeScript.",
+        expectedMode: "extended",
+        keywords: ["typescript"]
+    },
+    {
+        name: "Causal",
+        prompt: "Por que uma aplicação Node.js pode ficar lenta mesmo usando operações assíncronas?",
+        expectedMode: "extended",
+        keywords: ["event", "bloque"]
+    },
+    {
+        name: "Ferramenta",
+        prompt: "Mostre as informações do meu sistema.",
+        expectedMode: "fast",
+        keywords: ["cpu", "ram"],
+        expectTool: true
+    }
+];
+
+function containsKeywords(answer: string, keywords: string[]): string[] {
+    const normalized = answer.toLocaleLowerCase("pt-BR");
+
+    return keywords.filter(keyword =>
+        normalized.includes(keyword.toLocaleLowerCase("pt-BR"))
+    );
+}
+
+function containsLeakedMeta(answer: string): boolean {
     return /\\b(okay, the user|let me (think|check)|i need to|first, i|o usuário está pedindo|vou analisar|preciso verificar)\\b/i.test(
         answer
     );
