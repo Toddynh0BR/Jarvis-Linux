@@ -24,10 +24,9 @@ import {
 
 const MAX_HISTORY_MESSAGES = 24;
 const FAST_MAX_TOKENS = 96;
-const EXTENDED_MAX_TOKENS = 384;
-const EMPTY_EXTENDED_RETRY_TOKENS = 192;
-const EXTENDED_THINKING =
-    process.env.JARVIS_EXTENDED_THINK === "true";
+const EXTENDED_MAX_TOKENS = 256;
+const EXTENDED_RETRY_TOKENS = 192;
+const EXTENDED_THINKING = false;
 
 const SYSTEM_PROMPT = `
 Você é Jarvis, um assistente local executado no computador do usuário.
@@ -46,7 +45,10 @@ Regras:
 - Nunca descreva como decidiu usar uma ferramenta.
 - Nunca diga que está analisando, verificando ou pensando.
 - Nunca comece com "Okay, the user...", "Let me...", "I need to..." ou equivalentes.
-- Use /no_think quando o raciocínio deliberado não estiver explicitamente solicitado.
+- Não narre seu processo de elaboração da resposta.
+- Não comece a resposta descrevendo o pedido do usuário.
+- Não use frases como "Okay, the user...", "Let me...", "I need to...", "First, I..." ou equivalentes.
+- Comece diretamente pela resposta ao usuário.
 `;
 
 export interface AgentOptions {
@@ -194,8 +196,7 @@ export class JarvisAgent {
                 tools,
                 {
                     think,
-                    temperature:
-                        route.mode === "extended" ? 0.2 : 0.1,
+                    temperature: 0.1,
                     numPredict:
                         route.mode === "extended"
                             ? EXTENDED_MAX_TOKENS
@@ -207,9 +208,61 @@ export class JarvisAgent {
 
             const assistantMessage = response.message;
             const toolCalls = assistantMessage.tool_calls ?? [];
-            const content = cleanAssistantContent(
-                assistantMessage.content?.trim() ?? ""
-            );
+            const rawContent = assistantMessage.content?.trim() ?? "";
+            const content = cleanAssistantContent(rawContent);
+
+            if (
+                toolCalls.length === 0 &&
+                route.mode === "extended" &&
+                containsReasoningLeak(rawContent)
+            ) {
+                console.log(
+                    "[Agent] Conteúdo estendido contaminado por meta-raciocínio; " +
+                    "repetindo resposta direta."
+                );
+
+                const retry = await chat(
+                    this.messages,
+                    model,
+                    undefined,
+                    {
+                        think: false,
+                        temperature: 0.1,
+                        numPredict: EXTENDED_RETRY_TOKENS
+                    }
+                );
+
+                tracker.recordModelResponse(retry);
+
+                const retryRaw = retry.message.content?.trim() ?? "";
+                const retryAnswer = cleanAssistantContent(retryRaw);
+
+                if (
+                    retryAnswer &&
+                    !containsReasoningLeak(retryRaw)
+                ) {
+                    this.messages.push({
+                        role: "assistant",
+                        content: retryAnswer
+                    });
+
+                    console.log(
+                        formatPerformance(
+                            tracker.snapshot(route.mode)
+                        )
+                    );
+
+                    return retryAnswer;
+                }
+
+                console.log(
+                    formatPerformance(
+                        tracker.snapshot(route.mode)
+                    )
+                );
+
+                return "Não consegui gerar uma resposta final para essa solicitação.";
+            }
 
             if (
                 toolCalls.length === 0 &&
@@ -228,7 +281,7 @@ export class JarvisAgent {
                     {
                         think: false,
                         temperature: 0.2,
-                        numPredict: EMPTY_EXTENDED_RETRY_TOKENS
+                        numPredict: EXTENDED_RETRY_TOKENS
                     }
                 );
 
@@ -320,9 +373,16 @@ export class JarvisAgent {
     }
 }
 
+function containsReasoningLeak(content: string): boolean {
+    return /(?:okay, the user|the user (?:is|wants|asks)|let me (?:think|check)|i need to|first, i|hmm,|wait,|let's (?:think|see)|the user is asking)/i.test(
+        content
+    );
+}
+
 function cleanAssistantContent(content: string): string {
     return content
         .replace(/<think>[\s\S]*?<\/think>/gi, "")
+        .replace(/<think>[\s\S]*/gi, "")
         .trim();
 }
 
@@ -384,6 +444,7 @@ export async function startAgent(
 
 Modelo principal: ${options.model ?? OLLAMA_MODEL}
 Modelo rápido: ${OLLAMA_FAST_MODEL}
+Thinking: desativado
 Digite "sair" para encerrar.
 Digite "limpar" para limpar a conversa.
 `);
