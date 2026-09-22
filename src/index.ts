@@ -1,18 +1,22 @@
-import { initializeDatabase, getLatestCompatibility, getLatestSystemInfo } from "./database/database";
-import { COMPATIBILITY_CHECK_VERSION } from "./database/database";
-import { performSetup } from "./setup/setup.js";
+import {
+    initializeDatabase,
+    getLatestCompatibility,
+    getLatestSystemInfo,
+    COMPATIBILITY_CHECK_VERSION
+} from "./database/database";
+import { performSetup, ensureOllamaSetup } from "./setup/setup.js";
 import { printCompatibility } from "./setup/compatibility";
 import { startAgent } from "./ai/agent";
 
 function printBanner(): void {
     console.clear();
 
-    console.log(`
-╔══════════════════════════════════════════════╗
-║                  J A R V I S                 ║
-║             Local AI Assistant               ║
-╚══════════════════════════════════════════════╝
-`);
+    console.log(
+        "\n╔══════════════════════════════════════════════╗\n" +
+        "║                  J A R V I S                 ║\n" +
+        "║             Local AI Assistant               ║\n" +
+        "╚══════════════════════════════════════════════╝\n"
+    );
 }
 
 async function main(): Promise<void> {
@@ -43,7 +47,8 @@ async function main(): Promise<void> {
             );
 
             const result = await performSetup(db, {
-                forceCompatibilityCheck: true
+                forceCompatibilityCheck: true,
+                validateModel: true
             });
 
             if (!result.compatible) {
@@ -80,19 +85,25 @@ async function main(): Promise<void> {
             console.log("✓ Compatibilidade já verificada.");
             console.log("✓ Sistema compatível.");
 
-            // Não executamos novamente o diagnóstico aqui.
-            // O estado salvo no banco é suficiente para entrar no runtime.
             const system = getLatestSystemInfo(db);
 
             if (system) {
                 console.log(
-                    `✓ Ambiente: ${system.prettyDistributionName} / ${system.architecture}`
+                    "✓ Ambiente: " +
+                    system.prettyDistributionName +
+                    " / " +
+                    system.architecture
                 );
             }
 
-            const result = await performSetup(db);
+            // O diagnóstico e o teste de inferência não são repetidos
+            // em todo npm start. Apenas garantimos que Ollama/API/modelo
+            // estejam disponíveis.
+            const ollamaReady = await ensureOllamaSetup(db, {
+                validateModel: false
+            });
 
-            if (!result.ollamaReady) {
+            if (!ollamaReady) {
                 console.log(
                     "\nO ambiente do Ollama não está pronto."
                 );
