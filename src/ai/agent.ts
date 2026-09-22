@@ -25,6 +25,8 @@ const MAX_HISTORY_MESSAGES = 24;
 const FAST_MAX_TOKENS = 96;
 const EXTENDED_MAX_TOKENS = 768;
 const EMPTY_EXTENDED_RETRY_TOKENS = 256;
+const EXTENDED_THINKING =
+    process.env.JARVIS_EXTENDED_THINK === "true";
 
 const SYSTEM_PROMPT = `
 Você é Jarvis, um assistente local executado no computador do usuário baseado na icónica inteligencia artificial do Home de Ferro, Jarvis.
@@ -98,8 +100,15 @@ export class JarvisAgent {
         ];
     }
 
-    private async resolveModel(mode: ResponseMode): Promise<string> {
-        if (mode !== "fast" || OLLAMA_FAST_MODEL === this.model) {
+    private async resolveModel(
+        mode: ResponseMode,
+        toolPreferred = false
+    ): Promise<string> {
+        if (
+            mode !== "fast" ||
+            toolPreferred ||
+            OLLAMA_FAST_MODEL === this.model
+        ) {
             return this.model;
         }
 
@@ -117,7 +126,10 @@ export class JarvisAgent {
     async ask(userMessage: string): Promise<string> {
         const route = classifyMessage(userMessage);
         const tracker = new PerformanceTracker();
-        const model = await this.resolveModel(route.mode);
+        const model = await this.resolveModel(
+            route.mode,
+            route.toolPreferred === true
+        );
 
         console.log(
             "[Router] " +
@@ -127,6 +139,9 @@ export class JarvisAgent {
             " | confiança " +
             Math.round(route.confidence * 100) +
             "%" +
+            (route.toolPreferred
+                ? " | ferramenta preferida"
+                : "") +
             (model !== this.model
                 ? " | modelo rápido " + model
                 : " | modelo " + model)
@@ -140,7 +155,9 @@ export class JarvisAgent {
         this.trimHistory();
 
         const tools = getOllamaTools();
-        const think = route.mode === "extended";
+        const think =
+            route.mode === "extended" &&
+            EXTENDED_THINKING;
 
         for (let iteration = 0; iteration < 8; iteration++) {
             const response = await chat(
