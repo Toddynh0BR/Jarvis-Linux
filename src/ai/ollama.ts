@@ -232,9 +232,27 @@ export async function chat(
     tools?: any[],
     options: ChatOptions = {}
 ) {
+    const normalizedMessages = messages.map(message => ({
+        ...message,
+        ...(message.tool_calls
+            ? {
+                tool_calls: message.tool_calls.map(toolCall => ({
+                    ...toolCall,
+                    function: {
+                        ...toolCall.function,
+                        arguments:
+                            typeof toolCall.function.arguments === "string"
+                                ? parseToolArguments(toolCall.function.arguments)
+                                : toolCall.function.arguments
+                    }
+                }))
+            }
+            : {})
+    }));
+
     return ollama.chat({
         model: modelName,
-        messages,
+        messages: normalizedMessages,
         tools,
         stream: false,
         think: options.think ?? false,
@@ -249,6 +267,20 @@ export async function chat(
                 : {})
         }
     });
+}
+
+function parseToolArguments(
+    argumentsValue: string
+): Record<string, unknown> {
+    try {
+        const parsed = JSON.parse(argumentsValue);
+
+        return parsed && typeof parsed === "object"
+            ? parsed as Record<string, unknown>
+            : {};
+    } catch {
+        return {};
+    }
 }
 
 export async function getOllamaState(): Promise<OllamaState> {
