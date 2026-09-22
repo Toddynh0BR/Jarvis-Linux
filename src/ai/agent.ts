@@ -10,6 +10,15 @@ import {
     getOllamaTools,
     type ToolContext
 } from "../tools/registry";
+import {
+    classifyMessage
+} from "./router";
+import {
+    PerformanceTracker,
+    formatPerformance
+} from "./performance";
+
+const MAX_HISTORY_MESSAGES = 24;
 
 const SYSTEM_PROMPT = `
 Você é Jarvis, um assistente local executado no computador do usuário.
@@ -37,6 +46,13 @@ export class JarvisAgent {
         role: "system" | "user" | "assistant" | "tool";
         content: string;
         tool_name?: string;
+        thinking?: string;
+        tool_calls?: Array<{
+            function: {
+                name: string;
+                arguments: Record<string, unknown> | string;
+            };
+        }>;
     }>;
 
     constructor(options: AgentOptions = {}) {
@@ -53,38 +69,76 @@ export class JarvisAgent {
         ];
     }
 
+    private trimHistory(): void {
+        if (this.messages.length <= MAX_HISTORY_MESSAGES) {
+            return;
+        }
+
+        const systemMessage = this.messages[0];
+
+        this.messages = [
+            systemMessage,
+            ...this.messages.slice(-MAX_HISTORY_MESSAGES + 1)
+        ];
+    }
+
     async ask(userMessage: string): Promise<string> {
+        const route = classifyMessage(userMessage);
+        const tracker = new PerformanceTracker();
+
+        console.log(
+            "[Router] " +
+            route.mode +
+            " | " +
+            route.reason +
+            " | confiança " +
+            Math.round(route.confidence * 100) +
+            "%"
+        );
+
         this.messages.push({
             role: "user",
             content: userMessage
         });
 
-        const tools = getOllamaTools();
+        this.trimHistory();
 
-        // Limite de iterações evita loops de ferramentas.
+        const tools = getOllamaTools();
+        const think = route.mode === "extended";
+
         for (let iteration = 0; iteration < 8; iteration++) {
             const response = await chat(
                 this.messages,
                 this.model,
-                tools
+                tools,
+                {
+                    think,
+                    temperature: route.mode === "extended" ? 0.2 : 0.1,
+                    numPredict: route.mode === "extended" ? 768 : 256
+                }
             );
+
+            tracker.recordModelResponse(response);
 
             const assistantMessage = response.message;
 
             this.messages.push({
                 role: "assistant",
-                content: assistantMessage.content ?? ""
+                content: assistantMessage.content ?? "",
+                thinking: assistantMessage.thinking,
+                tool_calls: assistantMessage.tool_calls as any
             });
 
             const toolCalls = assistantMessage.tool_calls ?? [];
 
             if (toolCalls.length === 0) {
-                return assistantMessage.content?.trim() || "";
+                const answer = assistantMessage.content?.trim() || "";
+                console.log(formatPerformance(tracker.snapshot(route.mode)));
+                return answer;
             }
 
             for (const call of toolCalls) {
                 const name = call.function.name;
-
                 let args: Record<string, unknown> = {};
 
                 try {
@@ -96,7 +150,8 @@ export class JarvisAgent {
                     args = {};
                 }
 
-                console.log(`\n[Tool] ${name}`);
+                tracker.recordToolCall();
+                console.log("\n[Tool] " + name);
 
                 const result = await executeTool(
                     name,
@@ -110,11 +165,14 @@ export class JarvisAgent {
                     content: result
                 });
             }
+
+            this.trimHistory();
         }
+
+        console.log(formatPerformance(tracker.snapshot(route.mode)));
 
         return "Não consegui concluir a solicitação porque o limite de execução de ferramentas foi atingido.";
     }
-
     clearConversation(): void {
         this.messages = [
             {
