@@ -4,7 +4,14 @@ export interface RouteDecision {
     mode: ResponseMode;
     reason: string;
     confidence: number;
+    toolPreferred?: boolean;
 }
+
+const TOOL_INTENT_PATTERNS = [
+    /\b(meu|minha|meus|minhas)\s+(sistema|processador|cpu|ram|mem[oó]ria|gpu|placa de v[ií]deo|kernel)\b/i,
+    /\b(sistema operacional|informa[cç][oõ]es do sistema|status do sistema)\b/i,
+    /\b(abra|abrir|feche|fechar|inicie|iniciar|execute|executar)\b/i
+];
 
 const FAST_PATTERNS = [
     /^(oi|olá|ola|hey|ei|bom dia|boa tarde|boa noite)\b/i,
@@ -31,6 +38,10 @@ export function classifyMessage(message: string): RouteDecision {
         return { mode: "fast", reason: "mensagem vazia", confidence: 1 };
     }
 
+    const toolPreferred = TOOL_INTENT_PATTERNS.some(pattern =>
+        pattern.test(normalized)
+    );
+
     const extendedMatch = EXTENDED_PATTERNS.find(item =>
         item.pattern.test(normalized)
     );
@@ -39,7 +50,8 @@ export function classifyMessage(message: string): RouteDecision {
         return {
             mode: "extended",
             reason: extendedMatch.reason,
-            confidence: 0.9
+            confidence: 0.9,
+            toolPreferred
         };
     }
 
@@ -47,7 +59,8 @@ export function classifyMessage(message: string): RouteDecision {
         return {
             mode: "fast",
             reason: "comando ou pergunta curta",
-            confidence: 0.85
+            confidence: 0.85,
+            toolPreferred
         };
     }
 
@@ -57,7 +70,8 @@ export function classifyMessage(message: string): RouteDecision {
         return {
             mode: "extended",
             reason: "mensagem longa",
-            confidence: 0.8
+            confidence: 0.8,
+            toolPreferred
         };
     }
 
@@ -65,13 +79,15 @@ export function classifyMessage(message: string): RouteDecision {
         return {
             mode: "fast",
             reason: "mensagem curta sem sinais de raciocínio estendido",
-            confidence: 0.75
+            confidence: 0.75,
+            toolPreferred
         };
     }
 
     return {
         mode: "fast",
         reason: "modo rápido por padrão; sem sinais fortes de raciocínio estendido",
-        confidence: 0.6
+        confidence: 0.6,
+        toolPreferred
     };
 }
