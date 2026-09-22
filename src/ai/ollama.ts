@@ -224,7 +224,7 @@ export async function chat(
         tool_calls?: Array<{
             function: {
                 name: string;
-                arguments: Record<string, unknown>;
+                arguments: Record<string, unknown> | string;
             };
         }>;
     }>,
