@@ -14,6 +14,9 @@ export const OLLAMA_API_URL =
 export const OLLAMA_MODEL =
     process.env.JARVIS_MODEL ?? "qwen3:4b";
 
+export const OLLAMA_FAST_MODEL =
+    process.env.JARVIS_FAST_MODEL ?? "qwen3:1.7b";
+
 export interface OllamaState {
     installed: boolean;
     version: string | null;
