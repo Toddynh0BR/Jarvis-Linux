@@ -77,7 +77,17 @@ export function formatPerformance(metrics: RequestMetrics): string {
                     ? ", " + item.tokensPerSecond.toFixed(1) + " tok/s"
                     : "";
 
-            return (item.durationMs / 1000).toFixed(2) + "s" + speed;
+            return (
+                (item.durationMs / 1000).toFixed(2) +
+                "s, load " +
+                (item.loadDurationMs / 1000).toFixed(2) +
+                "s, prompt " +
+                item.promptTokens +
+                " tok, output " +
+                item.outputTokens +
+                " tok" +
+                speed
+            );
         })
         .join(" | ");
 
