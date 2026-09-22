@@ -43,10 +43,27 @@ async function main(): Promise<void> {
     console.log("Casos: " + cases.length + "\n");
 
     const agent = new JarvisAgent();
+
+    console.log("\nAquecendo o modelo para separar custo de carregamento dos testes...");
+    const warmupStarted = performance.now();
+    try {
+        await agent.ask("Responda somente: OK.");
+        console.log(
+            "Aquecimento concluído em " +
+            ((performance.now() - warmupStarted) / 1000).toFixed(2) +
+            "s."
+        );
+    } catch (error: any) {
+        console.log("⚠ Aquecimento falhou: " + (error?.message ?? String(error)));
+    }
+
+    agent.clearConversation();
+
     let passedRouting = 0;
     let nonEmptyAnswers = 0;
 
     for (const test of cases) {
+        agent.clearConversation();
         const route = classifyMessage(test.prompt);
 
         console.log("\n[" + test.name + "]");
