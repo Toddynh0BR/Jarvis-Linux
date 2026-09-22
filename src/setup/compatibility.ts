@@ -5,6 +5,12 @@ import {
     runDiagnostics,
     type SystemInfo
 } from "./diagnostics";
+import {
+    initializeDatabase,
+    saveCompatibility,
+    saveSystemInfo,
+    DATABASE_PATH
+} from "../database/database";
 
 export const COMPATIBILITY_CHECK_VERSION = 1;
 
@@ -32,18 +38,24 @@ export function checkCompatibility(
         system.architecture !== "x64" &&
         system.architecture !== "arm64"
     ) {
-        reasons.push(`Arquitetura não suportada: ${system.architecture}`);
+        reasons.push(
+            "Arquitetura não suportada: " + system.architecture
+        );
     }
 
     if (bytesToGB(system.ramTotalBytes) < MIN_RAM_GB) {
         reasons.push(
-            `RAM insuficiente. Mínimo recomendado: ${MIN_RAM_GB} GB.`
+            "RAM insuficiente. Mínimo recomendado: " +
+            MIN_RAM_GB +
+            " GB."
         );
     }
 
     if (bytesToGB(system.rootFreeBytes) < MIN_FREE_STORAGE_GB) {
         reasons.push(
-            `Espaço livre insuficiente. Necessário pelo menos ${MIN_FREE_STORAGE_GB} GB.`
+            "Espaço livre insuficiente. Necessário pelo menos " +
+            MIN_FREE_STORAGE_GB +
+            " GB."
         );
     }
 
@@ -55,7 +67,9 @@ export function checkCompatibility(
         )
     ) {
         warnings.push(
-            `Distribuição ${system.prettyDistributionName} não é oficialmente suportada nesta versão.`
+            "Distribuição " +
+            system.prettyDistributionName +
+            " não é oficialmente suportada nesta versão."
         );
     }
 
@@ -65,19 +79,17 @@ export function checkCompatibility(
         );
     }
 
-    if (
-        /amd|radeon/i.test(system.gpu)
-    ) {
+    if (/amd|radeon/i.test(system.gpu)) {
         warnings.push(
             "GPU AMD detectada. A aceleração dependerá do suporte disponível no ambiente."
         );
     }
 
-    if (!system.tools.node.installed) {
+    if (!system.tools.node?.installed) {
         reasons.push("Node.js não foi encontrado.");
     }
 
-    if (!system.tools.git.installed) {
+    if (!system.tools.git?.installed) {
         warnings.push("Git não foi encontrado.");
     }
 
@@ -89,7 +101,9 @@ export function checkCompatibility(
     };
 }
 
-export function printCompatibility(result: CompatibilityResult): void {
+export function printCompatibility(
+    result: CompatibilityResult
+): void {
     console.log("\nCompatibilidade");
     console.log("──────────────────────────────────────────────");
 
@@ -99,7 +113,7 @@ export function printCompatibility(result: CompatibilityResult): void {
         console.log("✗ Sistema incompatível.");
 
         for (const reason of result.reasons) {
-            console.log(`  • ${reason}`);
+            console.log("  • " + reason);
         }
     }
 
@@ -107,7 +121,7 @@ export function printCompatibility(result: CompatibilityResult): void {
         console.log("\nAvisos:");
 
         for (const warning of result.warnings) {
-            console.log(`  • ${warning}`);
+            console.log("  • " + warning);
         }
     }
 }
@@ -125,13 +139,36 @@ export async function runCompatibilityCheck(): Promise<{
     return { system, compatibility };
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(__filename)) {
-    runCompatibilityCheck()
-        .then(({ compatibility }) => {
-            process.exitCode = compatibility.supported ? 0 : 1;
-        })
-        .catch(error => {
-            console.error("\nErro na verificação:", error.message);
-            process.exit(1);
-        });
+async function runCompatibilityCommand(): Promise<void> {
+    const db = initializeDatabase();
+
+    try {
+        const { system, compatibility } =
+            await runCompatibilityCheck();
+
+        saveSystemInfo(db, system);
+        saveCompatibility(db, compatibility);
+
+        console.log(
+            "\n✓ Diagnóstico e compatibilidade salvos em " +
+            DATABASE_PATH
+        );
+
+        process.exitCode = compatibility.supported ? 0 : 1;
+    } finally {
+        db.close();
+    }
+}
+
+if (
+    process.argv[1] &&
+    path.resolve(process.argv[1]) === path.resolve(__filename)
+) {
+    runCompatibilityCommand().catch(error => {
+        console.error(
+            "\nErro na verificação:",
+            error?.message ?? error
+        );
+        process.exit(1);
+    });
 }
