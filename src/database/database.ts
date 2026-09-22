@@ -121,7 +121,7 @@ export function initializeDatabase(): Database.Database {
         db.transaction(() => {
             db.prepare("DELETE FROM system_info").run();
 
-            db.prepare(``
+            db.prepare(`
                 INSERT INTO system_info (
                     id, username, hostname, home_directory,
                     os, distribution, distribution_version, pretty_distribution_name,
@@ -142,7 +142,7 @@ export function initializeDatabase(): Database.Database {
                     @root_filesystem, @root_total_bytes, @root_free_bytes,
                     @package_manager, @created_at
                 )
-            ``).run(latestSystemInfo);
+            `).run(latestSystemInfo);
         })();
     }
 
@@ -192,10 +192,10 @@ export function getLatestCompatibility(
     };
 }
 
-export function saveCompatibility(
+export async function saveCompatibility(
     db: Database.Database,
     result: CompatibilityResult
-): void {
+): Promise<void> {
     db.prepare(`
         INSERT INTO compatibility (
             supported, reasons, warnings, check_version, checked_at
@@ -210,10 +210,10 @@ export function saveCompatibility(
     );
 }
 
-export function saveSystemInfo(
+export async function saveSystemInfo(
     db: Database.Database,
     system: SystemInfo
-): void {
+): Promise<void> {
     db.prepare(`
         INSERT INTO system_info (
             id,

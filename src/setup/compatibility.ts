@@ -11,6 +11,7 @@ import {
     saveSystemInfo,
     DATABASE_PATH
 } from "../database/database";
+import { delay } from "./setup";
 
 export const COMPATIBILITY_CHECK_VERSION = 1;
 
@@ -99,13 +100,15 @@ export function checkCompatibility(
         warnings,
         checkVersion: COMPATIBILITY_CHECK_VERSION
     };
-}
+};
 
-export function printCompatibility(
+export async function printCompatibility(
     result: CompatibilityResult
-): void {
+): Promise<void> {
     console.log("\nCompatibilidade");
     console.log("──────────────────────────────────────────────");
+
+    await delay(1000)
 
     if (result.supported) {
         console.log("✓ Sistema compatível com o Jarvis.");
@@ -116,6 +119,8 @@ export function printCompatibility(
             console.log("  • " + reason);
         }
     }
+
+    await delay(1000)
 
     if (result.warnings.length > 0) {
         console.log("\nAvisos:");
@@ -131,10 +136,12 @@ export async function runCompatibilityCheck(): Promise<{
     compatibility: CompatibilityResult;
 }> {
     const system = await runDiagnostics();
-    printSystemInfo(system);
+    await printSystemInfo(system);
+
+    await delay(1000)
 
     const compatibility = checkCompatibility(system);
-    printCompatibility(compatibility);
+    await printCompatibility(compatibility);
 
     return { system, compatibility };
 }
@@ -146,8 +153,15 @@ async function runCompatibilityCommand(): Promise<void> {
         const { system, compatibility } =
             await runCompatibilityCheck();
 
-        saveSystemInfo(db, system);
-        saveCompatibility(db, compatibility);
+        await delay(1000)
+
+        await saveSystemInfo(db, system);
+
+        await delay(1000)
+
+        await saveCompatibility(db, compatibility);
+
+        await delay(1000)
 
         console.log(
             "\n✓ Diagnóstico e compatibilidade salvos em " +
@@ -160,10 +174,7 @@ async function runCompatibilityCommand(): Promise<void> {
     }
 }
 
-if (
-    process.argv[1] &&
-    path.resolve(process.argv[1]) === path.resolve(__filename)
-) {
+if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(__filename)) {
     runCompatibilityCommand().catch(error => {
         console.error(
             "\nErro na verificação:",

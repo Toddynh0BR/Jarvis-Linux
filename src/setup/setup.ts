@@ -39,6 +39,10 @@ export interface SetupResult {
     ollamaReady: boolean;
 }
 
+export function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function askConfirmation(question: string): Promise<boolean> {
     const rl = readline.createInterface({ input, output });
 

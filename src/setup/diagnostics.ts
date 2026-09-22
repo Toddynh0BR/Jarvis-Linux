@@ -3,6 +3,7 @@ import { promisify } from "node:util";
 import * as os from "node:os";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { delay } from "./setup.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -69,17 +70,17 @@ export async function runCommand(
             code: typeof error.code === "number" ? error.code : 1
         };
     }
-}
+};//executar comandos
 
 export async function commandExists(command: string): Promise<boolean> {
     const result = await runCommand("which", [command]);
     return result.code === 0 && result.stdout.trim().length > 0;
-}
+};//Veirifcar se comando existe
 
 export async function getCommandPath(command: string): Promise<string | null> {
     const result = await runCommand("which", [command]);
     return result.code === 0 ? result.stdout.trim() || null : null;
-}
+};//buscar caminho do comando
 
 export async function getCommandVersion(
     command: string,
@@ -93,15 +94,16 @@ export async function getCommandVersion(
         .find(Boolean);
 
     return line ?? null;
-}
+};//buscar versão de comando
 
 export function bytesToGB(bytes: number): number {
     return bytes / 1024 ** 3;
-}
+};
 
 export function formatGB(bytes: number): string {
-    return bytesToGB(bytes).toFixed(1) + " GB";
-}
+    const gb = bytes / 1024 ** 3;//formata de bytes para gb
+    return gb.toFixed(1) + " GB";
+};//transformar bytes em gb para melhor entendimento do user
 
 function parseOsRelease(): Pick<
     SystemInfo,
@@ -428,56 +430,91 @@ export async function runDiagnostics(): Promise<SystemInfo> {
     };
 }
 
-export function printSystemInfo(system: SystemInfo): void {
+export async function printSystemInfo(system: SystemInfo): Promise<void> {
     console.log(
         "\n╔══════════════════════════════════════════════╗\n" +
         "║              JARVIS SYSTEM CHECK             ║\n" +
         "╚══════════════════════════════════════════════╝\n"
     );
 
+    await delay(1000)
+
     console.log("Sistema");
     console.log("──────────────────────────────────────────────");
-    console.log("OS:              " + system.os);
-    console.log("Distribuição:    " + system.prettyDistributionName);
-    console.log("Versão:          " + system.distributionVersion);
-    console.log("Kernel:          " + system.kernel);
-    console.log("Arquitetura:     " + system.architecture);
-    console.log("Desktop:         " + system.desktopEnvironment);
-    console.log("Window Manager:  " + system.windowManager);
-    console.log("Init:             " + system.initSystem);
+    await delay(200)
+     console.log("OS:              " + system.os);
+    await delay(200)
+     console.log("Distribuição:    " + system.prettyDistributionName);
+    await delay(200)
+     console.log("Versão:          " + system.distributionVersion);
+    await delay(200)
+     console.log("Kernel:          " + system.kernel);
+    await delay(200)
+     console.log("Arquitetura:     " + system.architecture);
+    await delay(200)
+     console.log("Desktop:         " + system.desktopEnvironment);
+    await delay(200)
+     console.log("Window Manager:  " + system.windowManager);
+    await delay(200)
+     console.log("Init:             " + system.initSystem);
 
-    console.log("\nHardware");
-    console.log("──────────────────────────────────────────────");
-    console.log("CPU:             " + system.cpuModel);
-    console.log("Cores:           " + system.cpuCores);
-    console.log("Threads:         " + system.cpuThreads);
-    console.log("RAM total:       " + formatGB(system.ramTotalBytes));
-    console.log("RAM disponível:  " + formatGB(system.ramAvailableBytes));
-    console.log("GPU:             " + system.gpu);
+    await delay(1000)
+
+
+     console.log("\nHardware");
+     console.log("──────────────────────────────────────────────");
+    await delay(200) 
+     console.log("CPU:             " + system.cpuModel);
+    await delay(200) 
+     console.log("Cores:           " + system.cpuCores);
+    await delay(200) 
+     console.log("Threads:         " + system.cpuThreads);
+    await delay(200) 
+     console.log("RAM total:       " + formatGB(system.ramTotalBytes));
+    await delay(200) 
+     console.log("RAM disponível:  " + formatGB(system.ramAvailableBytes));
+    await delay(200) 
+     console.log("GPU:             " + system.gpu);
+
+    await delay(1000)
 
     console.log("\nArmazenamento");
     console.log("──────────────────────────────────────────────");
-    console.log("Filesystem:      " + system.rootFilesystem);
-    console.log("Espaço total:    " + formatGB(system.rootTotalBytes));
-    console.log("Espaço livre:    " + formatGB(system.rootFreeBytes));
+    await delay(200)
+     console.log("Filesystem:      " + system.rootFilesystem);
+    await delay(200)
+     console.log("Espaço total:    " + formatGB(system.rootTotalBytes));
+    await delay(200)
+     console.log("Espaço livre:    " + formatGB(system.rootFreeBytes));
+
+    await delay(1000)
 
     console.log("\nShell");
     console.log("──────────────────────────────────────────────");
-    console.log("Atual:           " + system.shellCurrent);
-    console.log("Padrão:          " + system.shellDefault);
-
+    await delay(200) 
+     console.log("Atual:           " + system.shellCurrent);
+    await delay(200) 
+     console.log("Padrão:          " + system.shellDefault);
+    
+    await delay(1000)
+    
     console.log("\nAmbiente");
     console.log("──────────────────────────────────────────────");
-    console.log("Usuário:         " + system.username);
-    console.log("Home:            " + system.homeDirectory);
-    console.log("Hostname:        " + system.hostname);
-    console.log("Package Manager: " + system.packageManager);
+    await delay(200) 
+     console.log("Usuário:         " + system.username);
+    await delay(200) 
+     console.log("Home:            " + system.homeDirectory);
+    await delay(200) 
+     console.log("Hostname:        " + system.hostname);
+    await delay(200) 
+     console.log("Package Manager: " + system.packageManager);
 
     console.log("\nFerramentas");
     console.log("──────────────────────────────────────────────");
 
     for (const [name, info] of Object.entries(system.tools)) {
-        console.log(
+        await delay(200) 
+         console.log(
             (info.installed ? "✓" : "✗") +
             " " +
             name.padEnd(12) +
@@ -498,8 +535,8 @@ async function runDiagnoseCommand(): Promise<void> {
 
     try {
         const system = await runDiagnostics();
-        printSystemInfo(system);
-        saveSystemInfo(db, system);
+        await printSystemInfo(system);
+        await saveSystemInfo(db, system);
 
         console.log("\n✓ Diagnóstico salvo em " + DATABASE_PATH);
     } finally {
