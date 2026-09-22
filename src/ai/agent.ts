@@ -3,6 +3,8 @@ import { stdin as input, stdout as output } from "node:process";
 import {
     chat,
     ensureOllamaReady,
+    isModelInstalled,
+    OLLAMA_FAST_MODEL,
     OLLAMA_MODEL
 } from "./ollama";
 import {
@@ -11,7 +13,8 @@ import {
     type ToolContext
 } from "../tools/registry";
 import {
-    classifyMessage
+    classifyMessage,
+    type ResponseMode
 } from "./router";
 import {
     PerformanceTracker,
@@ -19,6 +22,9 @@ import {
 } from "./performance";
 
 const MAX_HISTORY_MESSAGES = 24;
+const FAST_MAX_TOKENS = 96;
+const EXTENDED_MAX_TOKENS = 768;
+const EMPTY_EXTENDED_RETRY_TOKENS = 256;
 
 const SYSTEM_PROMPT = `
 Você é Jarvis, um assistente local executado no computador do usuário baseado na icónica inteligencia artificial do Home de Ferro, Jarvis.
@@ -37,8 +43,9 @@ Regras:
 - Nunca descreva o processo de decisão da ferramenta.
 - Não diga que está analisando a pergunta.
 - Não diga que vai verificar novamente.
-- Quando uma ferramenta retornar uma informação, use o resultado
-- diretamente na resposta.
+- Quando uma ferramenta retornar uma informação, use o resultado diretamente na resposta.
+- Não escreva pensamentos, rascunhos ou comentários sobre como chegou à resposta.
+- Não comece respostas com frases como "Okay, the user...", "Let me...", "I need to..." ou equivalentes.
 `;
 
 export interface AgentOptions {
@@ -49,6 +56,8 @@ export interface AgentOptions {
 export class JarvisAgent {
     private readonly model: string;
     private readonly context: ToolContext;
+    private fastModelAvailable: boolean | null = null;
+
     private messages: Array<{
         role: "system" | "user" | "assistant" | "tool";
         content: string;
@@ -89,9 +98,26 @@ export class JarvisAgent {
         ];
     }
 
+    private async resolveModel(mode: ResponseMode): Promise<string> {
+        if (mode !== "fast" || OLLAMA_FAST_MODEL === this.model) {
+            return this.model;
+        }
+
+        if (this.fastModelAvailable === null) {
+            this.fastModelAvailable = await isModelInstalled(
+                OLLAMA_FAST_MODEL
+            );
+        }
+
+        return this.fastModelAvailable
+            ? OLLAMA_FAST_MODEL
+            : this.model;
+    }
+
     async ask(userMessage: string): Promise<string> {
         const route = classifyMessage(userMessage);
         const tracker = new PerformanceTracker();
+        const model = await this.resolveModel(route.mode);
 
         console.log(
             "[Router] " +
@@ -100,7 +126,10 @@ export class JarvisAgent {
             route.reason +
             " | confiança " +
             Math.round(route.confidence * 100) +
-            "%"
+            "%" +
+            (model !== this.model
+                ? " | modelo rápido " + model
+                : " | modelo " + model)
         );
 
         this.messages.push({
@@ -116,32 +145,82 @@ export class JarvisAgent {
         for (let iteration = 0; iteration < 8; iteration++) {
             const response = await chat(
                 this.messages,
-                this.model,
+                model,
                 tools,
                 {
                     think,
                     temperature: route.mode === "extended" ? 0.2 : 0.1,
-                    numPredict: route.mode === "extended" ? 768 : 256
+                    numPredict:
+                        route.mode === "extended"
+                            ? EXTENDED_MAX_TOKENS
+                            : FAST_MAX_TOKENS
                 }
             );
 
             tracker.recordModelResponse(response);
 
             const assistantMessage = response.message;
-
-            this.messages.push({
-                role: "assistant",
-                content: assistantMessage.content ?? "",
-                thinking: assistantMessage.thinking,
-                tool_calls: assistantMessage.tool_calls as any
-            });
-
             const toolCalls = assistantMessage.tool_calls ?? [];
+            const content = assistantMessage.content?.trim() ?? "";
+
+            if (toolCalls.length === 0 && !content && route.mode === "extended") {
+                console.log(
+                    "[Agent] Resposta estendida sem conteúdo final; " +
+                    "tentando uma geração direta sem thinking."
+                );
+
+                const fallback = await chat(
+                    this.messages,
+                    model,
+                    tools,
+                    {
+                        think: false,
+                        temperature: 0.2,
+                        numPredict: EMPTY_EXTENDED_RETRY_TOKENS
+                    }
+                );
+
+                tracker.recordModelResponse(fallback);
+
+                if (fallback.message.tool_calls?.length) {
+                    this.messages.push({
+                        role: "assistant",
+                        content: fallback.message.content ?? "",
+                        thinking: fallback.message.thinking,
+                        tool_calls: fallback.message.tool_calls as any
+                    });
+                } else {
+                    const fallbackAnswer =
+                        fallback.message.content?.trim() ?? "";
+
+                    this.messages.push({
+                        role: "assistant",
+                        content: fallbackAnswer
+                    });
+
+                    console.log(
+                        formatPerformance(
+                            tracker.snapshot(route.mode)
+                        )
+                    );
+
+                    return fallbackAnswer;
+                }
+            } else {
+                this.messages.push({
+                    role: "assistant",
+                    content: assistantMessage.content ?? "",
+                    thinking: assistantMessage.thinking,
+                    tool_calls: assistantMessage.tool_calls as any
+                });
+            }
 
             if (toolCalls.length === 0) {
-                const answer = assistantMessage.content?.trim() || "";
-                console.log(formatPerformance(tracker.snapshot(route.mode)));
-                return answer;
+                console.log(
+                    formatPerformance(tracker.snapshot(route.mode))
+                );
+
+                return content;
             }
 
             for (const call of toolCalls) {
@@ -176,10 +255,13 @@ export class JarvisAgent {
             this.trimHistory();
         }
 
-        console.log(formatPerformance(tracker.snapshot(route.mode)));
+        console.log(
+            formatPerformance(tracker.snapshot(route.mode))
+        );
 
         return "Não consegui concluir a solicitação porque o limite de execução de ferramentas foi atingido.";
     }
+
     clearConversation(): void {
         this.messages = [
             {
@@ -204,7 +286,8 @@ export async function startAgent(
 ║              JARVIS ESTÁ ONLINE              ║
 ╚══════════════════════════════════════════════╝
 
-Modelo: ${options.model ?? OLLAMA_MODEL}
+Modelo principal: ${options.model ?? OLLAMA_MODEL}
+Modelo rápido: ${OLLAMA_FAST_MODEL}
 Digite "sair" para encerrar.
 Digite "limpar" para limpar a conversa.
 `);
