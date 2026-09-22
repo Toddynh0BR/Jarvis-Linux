@@ -1,6 +1,7 @@
 import { ensureOllamaReady, OLLAMA_MODEL } from "../ai/ollama";
 import { JarvisAgent } from "../ai/agent";
 import { classifyMessage, type ResponseMode } from "../ai/router";
+import { resolveDirectToolIntent } from "../tools/intent";
 
 interface BenchmarkCase {
     name: string;
@@ -8,6 +9,7 @@ interface BenchmarkCase {
     expectedMode: ResponseMode;
     keywords?: string[];
     expectTool?: boolean;
+    maxSeconds?: number;
 }
 
 const cases: BenchmarkCase[] = [
@@ -16,50 +18,58 @@ const cases: BenchmarkCase[] = [
         prompt: "Qual sistema operacional estou usando?",
         expectedMode: "fast",
         keywords: ["cachy", "linux"],
-        expectTool: true
+        expectTool: true,
+        maxSeconds: 1
     },
     {
         name: "CPU",
         prompt: "Qual é meu processador?",
         expectedMode: "fast",
         keywords: ["5600gt", "amd"],
-        expectTool: true
+        expectTool: true,
+        maxSeconds: 1
     },
     {
         name: "Saudação",
         prompt: "Olá Jarvis",
-        expectedMode: "fast"
+        expectedMode: "fast",
+        maxSeconds: 2
     },
     {
         name: "Explicação REST",
         prompt: "Explique como funciona uma API REST e quais são seus principais componentes.",
         expectedMode: "extended",
-        keywords: ["http", "api"]
+        keywords: ["http", "api"],
+        maxSeconds: 30
     },
     {
         name: "Comparação",
         prompt: "Compare Node.js, Spring Boot e FastAPI considerando desempenho, ecossistema e facilidade de desenvolvimento.",
         expectedMode: "extended",
-        keywords: ["node", "spring", "fastapi"]
+        keywords: ["node", "spring", "fastapi"],
+        maxSeconds: 30
     },
     {
         name: "Programação",
         prompt: "Analise este problema de programação e explique como eu poderia estruturar uma solução em TypeScript.",
         expectedMode: "extended",
-        keywords: ["typescript"]
+        keywords: ["typescript"],
+        maxSeconds: 30
     },
     {
         name: "Causal",
         prompt: "Por que uma aplicação Node.js pode ficar lenta mesmo usando operações assíncronas?",
         expectedMode: "extended",
-        keywords: ["event", "bloque"]
+        keywords: ["event", "bloque"],
+        maxSeconds: 30
     },
     {
         name: "Ferramenta",
         prompt: "Mostre as informações do meu sistema.",
         expectedMode: "fast",
         keywords: ["cpu", "ram"],
-        expectTool: true
+        expectTool: true,
+        maxSeconds: 1
     }
 ];
 
@@ -119,11 +129,13 @@ async function main(): Promise<void> {
     let semanticPasses = 0;
     let cleanAnswers = 0;
     let toolIntentPasses = 0;
+    let performancePasses = 0;
 
     for (const test of cases) {
         agent.clearConversation();
 
         const route = classifyMessage(test.prompt);
+        const directIntent = resolveDirectToolIntent(test.prompt);
 
         console.log("\n[" + test.name + "]");
         console.log("Pergunta: " + test.prompt);
@@ -149,6 +161,7 @@ async function main(): Promise<void> {
         try {
             const answer = await agent.ask(test.prompt);
             const duration = performance.now() - started;
+            const seconds = duration / 1000;
 
             if (answer.trim()) {
                 nonEmptyAnswers++;
@@ -173,7 +186,7 @@ async function main(): Promise<void> {
             }
 
             if (test.expectTool) {
-                const toolDetected = route.toolPreferred === true;
+                const toolDetected = directIntent !== null || route.toolPreferred === true;
 
                 if (toolDetected) {
                     toolIntentPasses++;
@@ -181,7 +194,8 @@ async function main(): Promise<void> {
 
                 console.log(
                     "Intenção de ferramenta: " +
-                    (toolDetected ? "detectada" : "não detectada")
+                    (toolDetected ? "detectada" : "não detectada") +
+                    (directIntent ? " | resolução determinística" : "")
                 );
             }
 
@@ -198,6 +212,21 @@ async function main(): Promise<void> {
                 "Saída limpa: " +
                 (leakedMeta ? "NÃO" : "SIM")
             );
+
+            if (
+                test.maxSeconds === undefined ||
+                seconds <= test.maxSeconds
+            ) {
+                performancePasses++;
+            } else {
+                console.log(
+                    "⚠ Latência acima do alvo: " +
+                    seconds.toFixed(2) +
+                    "s > " +
+                    test.maxSeconds +
+                    "s"
+                );
+            }
 
             if (test.keywords) {
                 console.log(
@@ -247,7 +276,12 @@ async function main(): Promise<void> {
         "\n" +
         "Intenções de ferramenta detectadas: " +
         toolIntentPasses +
-        "/3\n\n" +
+        "/3\n" +
+        "Casos dentro da meta de latência: " +
+        performancePasses +
+        "/" +
+        cases.length +
+        "\n\n" +
         "Observação:\n" +
         "Este benchmark mede roteamento, latência e sinais básicos de resposta.\n" +
         "A qualidade semântica final deve ser revisada manualmente durante os testes.\n"
