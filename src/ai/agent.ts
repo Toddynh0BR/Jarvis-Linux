@@ -172,7 +172,7 @@ export class JarvisAgent {
                 const fallback = await chat(
                     this.messages,
                     model,
-                    tools,
+                    undefined,
                     {
                         think: false,
                         temperature: 0.2,
@@ -182,30 +182,21 @@ export class JarvisAgent {
 
                 tracker.recordModelResponse(fallback);
 
-                if (fallback.message.tool_calls?.length) {
-                    this.messages.push({
-                        role: "assistant",
-                        content: fallback.message.content ?? "",
-                        thinking: fallback.message.thinking,
-                        tool_calls: fallback.message.tool_calls as any
-                    });
-                } else {
-                    const fallbackAnswer =
-                        fallback.message.content?.trim() ?? "";
+                const fallbackAnswer =
+                    fallback.message.content?.trim() ?? "";
 
-                    this.messages.push({
-                        role: "assistant",
-                        content: fallbackAnswer
-                    });
+                this.messages.push({
+                    role: "assistant",
+                    content: fallbackAnswer
+                });
 
-                    console.log(
-                        formatPerformance(
-                            tracker.snapshot(route.mode)
-                        )
-                    );
+                console.log(
+                    formatPerformance(
+                        tracker.snapshot(route.mode)
+                    )
+                );
 
-                    return fallbackAnswer;
-                }
+                return fallbackAnswer;
             } else {
                 this.messages.push({
                     role: "assistant",
