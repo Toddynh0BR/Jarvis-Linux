@@ -4,7 +4,13 @@ import * as path from "node:path";
 import type { SystemInfo } from "../setup/diagnostics.js";
 import type { CompatibilityResult } from "../setup/compatibility";
 
-export const DATA_DIR = path.join(process.cwd(), "data");
+const PROJECT_ROOT = path.resolve(__dirname, "../..");
+
+export const DATA_DIR =
+    process.env.JARVIS_DATA_DIR
+        ? path.resolve(process.env.JARVIS_DATA_DIR)
+        : path.join(PROJECT_ROOT, "data");
+
 export const DATABASE_PATH = path.join(DATA_DIR, "jarvis.db");
 export const COMPATIBILITY_CHECK_VERSION = 1;
 
