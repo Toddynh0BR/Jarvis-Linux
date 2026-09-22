@@ -30,25 +30,23 @@ const EXTENDED_THINKING =
     process.env.JARVIS_EXTENDED_THINK === "true";
 
 const SYSTEM_PROMPT = `
-Você é Jarvis, um assistente local executado no computador do usuário baseado na icónica inteligencia artificial do Home de Ferro, Jarvis.
+Você é Jarvis, um assistente local executado no computador do usuário.
 
 Regras:
 - Responda em português brasileiro, salvo se o usuário pedir outro idioma.
-- Seja direto e natural.
-- Você pode usar ferramentas disponíveis quando elas forem necessárias.
+- Seja direto, natural e útil.
+- Use ferramentas quando elas forem necessárias.
 - Nunca invente que executou uma ação.
-- Nunca diga que abriu, criou, apagou ou modificou algo sem receber o resultado da ferramenta.
-- Não tente executar comandos de terminal diretamente.
-- Não peça ao usuário senhas, especialmente senhas sudo.
-- Para ações destrutivas, o sistema deverá exigir confirmação antes da execução.
-- Responda diretamente ao usuário.
-- Nunca exponha seu raciocínio interno.
-- Nunca descreva o processo de decisão da ferramenta.
-- Não diga que está analisando a pergunta.
-- Não diga que vai verificar novamente.
-- Quando uma ferramenta retornar uma informação, use o resultado diretamente na resposta.
-- Não escreva pensamentos, rascunhos ou comentários sobre como chegou à resposta.
-- Use /no_think quando não houver raciocínio deliberado solicitado.\n- Gere somente a resposta final; nunca escreva pensamentos, rascunhos ou meta-comentários.\n- Não comece respostas com frases como "Okay, the user...", "Let me...", "I need to..." ou equivalentes.
+- Nunca diga que abriu, criou, apagou ou modificou algo sem resultado da ferramenta.
+- Não execute comandos de terminal diretamente.
+- Nunca peça senhas ao usuário.
+- Ações destrutivas exigem confirmação antes da execução.
+- Responda somente com a resposta final destinada ao usuário.
+- Nunca exponha raciocínio interno, pensamentos, rascunhos ou meta-comentários.
+- Nunca descreva como decidiu usar uma ferramenta.
+- Nunca diga que está analisando, verificando ou pensando.
+- Nunca comece com "Okay, the user...", "Let me...", "I need to..." ou equivalentes.
+- Use /no_think quando o raciocínio deliberado não estiver explicitamente solicitado.
 `;
 
 export interface AgentOptions {
@@ -76,9 +74,7 @@ export class JarvisAgent {
 
     constructor(options: AgentOptions = {}) {
         this.model = options.model ?? OLLAMA_MODEL;
-        this.context = options.context ?? {
-            cwd: process.cwd()
-        };
+        this.context = options.context ?? { cwd: process.cwd() };
 
         this.messages = [
             {
@@ -131,8 +127,11 @@ export class JarvisAgent {
 
         if (directTool) {
             tracker.recordToolCall();
+
             console.log(
-                "[Tool] " + directTool.toolName + " | execução determinística"
+                "[Tool] " +
+                directTool.toolName +
+                " | execução determinística"
             );
 
             const result = await executeTool(
@@ -166,9 +165,7 @@ export class JarvisAgent {
             " | confiança " +
             Math.round(route.confidence * 100) +
             "%" +
-            (route.toolPreferred
-                ? " | ferramenta preferida"
-                : "") +
+            (route.toolPreferred ? " | ferramenta preferida" : "") +
             (model !== this.model
                 ? " | modelo rápido " + model
                 : " | modelo " + model)
@@ -181,7 +178,11 @@ export class JarvisAgent {
 
         this.trimHistory();
 
-        // Só envie schemas de ferramentas quando a mensagem realmente pode exigir\n        // uma ferramenta. Isso reduz o prompt de toda conversa normal.\n        const tools = route.toolPreferred\n            ? getOllamaTools()\n            : undefined;
+        // Ferramentas só entram no prompt quando a rota indica intenção de ferramenta.
+        const tools = route.toolPreferred
+            ? getOllamaTools()
+            : undefined;
+
         const think =
             route.mode === "extended" &&
             EXTENDED_THINKING;
@@ -193,7 +194,8 @@ export class JarvisAgent {
                 tools,
                 {
                     think,
-                    temperature: route.mode === "extended" ? 0.2 : 0.1,
+                    temperature:
+                        route.mode === "extended" ? 0.2 : 0.1,
                     numPredict:
                         route.mode === "extended"
                             ? EXTENDED_MAX_TOKENS
@@ -205,9 +207,15 @@ export class JarvisAgent {
 
             const assistantMessage = response.message;
             const toolCalls = assistantMessage.tool_calls ?? [];
-            const content = cleanAssistantContent(assistantMessage.content?.trim() ?? "");
+            const content = cleanAssistantContent(
+                assistantMessage.content?.trim() ?? ""
+            );
 
-            if (toolCalls.length === 0 && !content && route.mode === "extended") {
+            if (
+                toolCalls.length === 0 &&
+                !content &&
+                route.mode === "extended"
+            ) {
                 console.log(
                     "[Agent] Resposta estendida sem conteúdo final; " +
                     "tentando uma geração direta sem thinking."
@@ -226,8 +234,9 @@ export class JarvisAgent {
 
                 tracker.recordModelResponse(fallback);
 
-                const fallbackAnswer =
-                    fallback.message.content?.trim() ?? "";
+                const fallbackAnswer = cleanAssistantContent(
+                    fallback.message.content?.trim() ?? ""
+                );
 
                 this.messages.push({
                     role: "assistant",
@@ -241,18 +250,20 @@ export class JarvisAgent {
                 );
 
                 return fallbackAnswer;
-            } else {
-                this.messages.push({
-                    role: "assistant",
-                    content: assistantMessage.content ?? "",
-                    thinking: assistantMessage.thinking,
-                    tool_calls: assistantMessage.tool_calls as any
-                });
             }
+
+            this.messages.push({
+                role: "assistant",
+                content: assistantMessage.content ?? "",
+                thinking: assistantMessage.thinking,
+                tool_calls: assistantMessage.tool_calls as any
+            });
 
             if (toolCalls.length === 0) {
                 console.log(
-                    formatPerformance(tracker.snapshot(route.mode))
+                    formatPerformance(
+                        tracker.snapshot(route.mode)
+                    )
                 );
 
                 return content;
@@ -291,7 +302,9 @@ export class JarvisAgent {
         }
 
         console.log(
-            formatPerformance(tracker.snapshot(route.mode))
+            formatPerformance(
+                tracker.snapshot(route.mode)
+            )
         );
 
         return "Não consegui concluir a solicitação porque o limite de execução de ferramentas foi atingido.";
@@ -309,7 +322,7 @@ export class JarvisAgent {
 
 function cleanAssistantContent(content: string): string {
     return content
-        .replace(/<think>[\\s\\S]*?<\\/think>/gi, "")
+        .replace(/<think>[\s\S]*?<\/think>/gi, "")
         .trim();
 }
 
@@ -322,15 +335,21 @@ function formatDirectToolResult(
 
         if (type === "openUrl") {
             if (data.success === true) {
-                return String(data.message ?? "URL aberta com sucesso.");
+                return String(
+                    data.message ?? "URL aberta com sucesso."
+                );
             }
 
-            return String(data.error ?? "Não foi possível abrir a URL.");
+            return String(
+                data.error ?? "Não foi possível abrir a URL."
+            );
         }
 
         if (data.error) {
-            return "Não consegui obter as informações do sistema: " +
-                String(data.error);
+            return (
+                "Não consegui obter as informações do sistema: " +
+                String(data.error)
+            );
         }
 
         return [
@@ -343,7 +362,7 @@ function formatDirectToolResult(
             `• RAM disponível: ${String(data.availableRamGB ?? "?")} GB`,
             `• GPU: ${String(data.gpu ?? "desconhecida")}`,
             `• Armazenamento livre: ${String(data.storageFreeGB ?? "?")} GB`
-        ].join("\\n");
+        ].join("\n");
     } catch {
         return result;
     }
@@ -386,7 +405,11 @@ Digite "limpar" para limpar a conversa.
                 continue;
             }
 
-            if (["sair", "exit", "quit"].includes(message.toLowerCase())) {
+            if (
+                ["sair", "exit", "quit"].includes(
+                    message.toLowerCase()
+                )
+            ) {
                 break;
             }
 
@@ -399,10 +422,12 @@ Digite "limpar" para limpar a conversa.
 
             try {
                 const answer = await agent.ask(message);
-                console.log(`\nJarvis > ${answer}\n`);
+                console.log("\nJarvis > " + answer + "\n");
             } catch (error: any) {
                 console.error(
-                    `\nJarvis > Erro: ${error?.message ?? error}\n`
+                    "\nJarvis > Erro: " +
+                    (error?.message ?? error) +
+                    "\n"
                 );
             }
 
