@@ -3,11 +3,9 @@ import { promisify } from "node:util";
 import * as os from "node:os";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { delay } from "./setup.js";
-
 const execFileAsync = promisify(execFile);
 
-export interface CommandResult {
+function delay(ms: number): Promise<void> {\n    return new Promise(resolve => setTimeout(resolve, ms));\n}\n\nexport interface CommandResult {
     stdout: string;
     stderr: string;
     code: number;
