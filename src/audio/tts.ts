@@ -80,15 +80,17 @@ export class JarvisTTS {
     }
 
     async speak(text: string): Promise<void> {
-        const cleanText = sanitizeSpeechText(text);
+        const chunks = splitSpeechText(sanitizeSpeechText(text));
 
-        if (!cleanText) {
+        if (chunks.length === 0) {
             return;
         }
 
         try {
-            const filePath = await this.generate(cleanText);
-            await this.play(filePath);
+            for (const chunk of chunks) {
+                const filePath = await this.generate(chunk);
+                await this.play(filePath);
+            }
         } catch (error) {
             if (!this.warnedUnavailable) {
                 this.warnedUnavailable = true;
@@ -398,3 +400,4 @@ function sanitizeSpeechText(text: string): string {
         .replace(/\s+/g, " ")
         .trim();
 }
+
