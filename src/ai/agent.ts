@@ -335,8 +335,25 @@ function containsReasoningLeak(content: string): boolean {
 
 function cleanAssistantContent(content: string): string {
     return content
-        .replace(/<think>[\s\S]*?<\/think>/gi, "")
-        .replace(/<think>[\s\S]*/gi, "")
+        .replace(/<think>[\\s\\S]*?<\\/think>/gi, "")
+        .replace(/<think>[\\s\\S]*/gi, "")
+        .replace(/\\[([^\\]]+)\\]\\([^)]*\\)/g, "$1")
+        .replace(/\\x60{3}[a-zA-Z0-9_-]*\\n?/g, "")
+        .replace(/\\x60/g, "")
+        .replace(/^\\s*#{1,6}\\s*/gm, "")
+        .replace(/^\\s*[-*+]\\s+/gm, "")
+        .replace(/^\\s*\\d+[.)]\\s+/gm, "")
+        .replace(/^\\s*[-*_]{3,}\\s*$/gm, "")
+        .replace(/\\*{1,3}|_{1,3}/g, "")
+        .replace(/\\u00a0/g, " ")
+        .replace(/&nbsp;/gi, " ")
+        .replace(/\\|/g, ", ")
+        .replace(/--+/g, ", ")
+        .replace(/—|–/g, ", ")
+        .replace(/[\\u{1F1E6}-\\u{1F1FF}\\u{1F300}-\\u{1FAFF}\\u{2600}-\\u{27BF}]/gu, "")
+        .replace(/[ \\t]+/g, " ")
+        .replace(/ \\n /g, "\\n")
+        .replace(/\\n{3,}/g, "\\n\\n")
         .trim();
 }
 
