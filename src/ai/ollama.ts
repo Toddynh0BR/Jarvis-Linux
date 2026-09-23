@@ -218,6 +218,9 @@ export interface ChatOptions {
     think?: ThinkingMode;
     keepAlive?: string | number;
     temperature?: number;
+    topP?: number;
+    topK?: number;
+    minP?: number;
     numPredict?: number;
 }
 
@@ -289,7 +292,11 @@ export async function chat(
             process.env.JARVIS_KEEP_ALIVE ??
             "10m",
         options: {
-            temperature: options.temperature ?? 0.2,
+            // Qwen3-Instruct-2507 official defaults.
+            temperature: options.temperature ?? 0.7,
+            top_p: options.topP ?? 0.8,
+            top_k: options.topK ?? 20,
+            min_p: options.minP ?? 0,
             ...(options.numPredict
                 ? { num_predict: options.numPredict }
                 : {})
