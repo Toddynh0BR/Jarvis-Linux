@@ -92,7 +92,7 @@ async function main(): Promise<void> {
     console.log(
         "\nNa primeira fala, o Jarvis baixa os modelos locais de VoiceDesign e Base. " +
         "Os checkpoints têm cerca de 4.52 GB e 2.52 GB, respectivamente; " +
-        "o tokenizer é compartilhado no cache local."
+        "reserve aproximadamente 7 GB para os modelos, além das dependências."
     );
     console.log(
         "Depois do download, a inferência é executada localmente no computador."
