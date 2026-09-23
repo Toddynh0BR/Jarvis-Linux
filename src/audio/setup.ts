@@ -12,6 +12,32 @@ const TTS_HOME = path.join(
     "tts"
 );
 
+const TTS_NATIVE_HOME = path.join(
+    os.homedir(),
+    ".local",
+    "share",
+    "jarvis",
+    "tts-native"
+);
+
+const TTS_NATIVE_REPOSITORY =
+    "https://github.com/gabriele-mastrapasqua/qwen3-tts.git";
+
+const TTS_NATIVE_SOURCE = path.join(
+    TTS_NATIVE_HOME,
+    "qwen3-tts"
+);
+
+const TTS_NATIVE_BINARY = path.join(
+    TTS_NATIVE_SOURCE,
+    "qwen_tts"
+);
+
+const TTS_NATIVE_MODEL = path.join(
+    TTS_NATIVE_SOURCE,
+    "qwen3-tts-0.6b"
+);
+
 async function run(command: string, args: string[]): Promise<number> {
     return new Promise(resolve => {
         const child = spawn(command, args, {
@@ -23,6 +49,91 @@ async function run(command: string, args: string[]): Promise<number> {
     });
 }
 
+
+async function installNativeTTS(): Promise<void> {
+    console.log("\nConfigurando backend nativo de TTS (Qwen3-TTS C)...");
+
+    for (const command of ["git", "make", "cc"]) {
+        if (!(await commandExists(command))) {
+            throw new Error(
+                "O comando " +
+                command +
+                " é necessário para o backend nativo de TTS."
+            );
+        }
+    }
+
+    await fs.mkdir(TTS_NATIVE_HOME, { recursive: true });
+
+    try {
+        await fs.access(TTS_NATIVE_SOURCE);
+        console.log("✓ Código do Qwen3-TTS nativo já existe.");
+    } catch {
+        console.log("Baixando o backend nativo do Qwen3-TTS...");
+
+        const code = await run(
+            "git",
+            [
+                "clone",
+                "--depth",
+                "1",
+                TTS_NATIVE_REPOSITORY,
+                TTS_NATIVE_SOURCE
+            ]
+        );
+
+        if (code !== 0) {
+            throw new Error(
+                "Falha ao baixar o backend nativo do Qwen3-TTS."
+            );
+        }
+    }
+
+    console.log("Compilando Qwen3-TTS com otimizações para CPU...");
+
+    if (
+        (await run(
+            "make",
+            ["blas"],
+        )) !== 0
+    ) {
+        throw new Error(
+            "Falha ao compilar o backend nativo do Qwen3-TTS."
+        );
+    }
+
+    try {
+        await fs.access(
+            path.join(TTS_NATIVE_MODEL, "config.json")
+        );
+        console.log("✓ Modelo Qwen3-TTS 0.6B já está instalado.");
+    } catch {
+        console.log("Baixando modelo Qwen3-TTS 0.6B...");
+
+        if (
+            (await run(
+                "./download_model.sh",
+                ["--model", "small"],
+            )) !== 0
+        ) {
+            throw new Error(
+                "Falha ao baixar o modelo Qwen3-TTS 0.6B."
+            );
+        }
+    }
+
+    try {
+        await fs.access(TTS_NATIVE_BINARY);
+    } catch {
+        throw new Error(
+            "O executável qwen_tts não foi criado durante a compilação."
+        );
+    }
+
+    console.log("✓ Backend nativo de TTS configurado.");
+    console.log("✓ Qwen3-TTS 0.6B com INT4 será usado no Jarvis.");
+    console.log("✓ Streaming de áudio será usado para reduzir o tempo até a primeira fala.");
+}
 
 async function installSystemSox(): Promise<void> {
     if (await commandExists("sox")) {
@@ -88,6 +199,7 @@ async function main(): Promise<void> {
     }
 
     await installSystemSox();
+    await installNativeTTS();
 
     const python = "python3";
     const venv = path.join(TTS_HOME, ".venv");
@@ -145,9 +257,11 @@ async function main(): Promise<void> {
         "✓ Voz: masculina brasileira, grave, calma e sofisticada."
     );
     console.log(
-        "\nNa primeira fala, o Jarvis baixa os modelos locais de VoiceDesign e Base. " +
-        "Os checkpoints têm cerca de 4.52 GB e 2.52 GB, respectivamente; " +
-        "reserve aproximadamente 7 GB para os modelos, além das dependências."
+        "\nO backend nativo mantém o modelo 0.6B carregado em memória e usa " +
+        "INT4 com streaming para reduzir drasticamente a latência da fala."
+    );
+    console.log(
+        "O backend Python antigo permanece instalado como fallback."
     );
     console.log(
         "Depois do download, a inferência é executada localmente no computador."
