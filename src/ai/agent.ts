@@ -209,6 +209,22 @@ export class JarvisAgent {
 
             tracker.recordModelResponse(response);
 
+            const maxTokens =
+                route.mode === "extended"
+                    ? EXTENDED_MAX_TOKENS
+                    : FAST_MAX_TOKENS;
+
+            if (
+                response.eval_count !== undefined &&
+                response.eval_count >= maxTokens
+            ) {
+                console.log(
+                    "[Agent] A resposta atingiu o limite de tokens de saída (" +
+                    maxTokens +
+                    "); possível truncamento."
+                );
+            }
+
             const assistantMessage = response.message;
             const toolCalls = assistantMessage.tool_calls ?? [];
             const rawContent = assistantMessage.content?.trim() ?? "";
