@@ -10,7 +10,9 @@
     "compatibility": "tsx src/setup/compatibility.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "benchmark": "tsx src/benchmark/benchmark.ts"
+    "benchmark": "tsx src/benchmark/benchmark.ts",
+    "audio:setup": "tsx src/audio/setup.ts",
+    "audio:test": "tsx src/audio/test.ts"
   },
   "keywords": [
     "jarvis",
