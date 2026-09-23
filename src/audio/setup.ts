@@ -23,6 +23,59 @@ async function run(command: string, args: string[]): Promise<number> {
     });
 }
 
+
+async function installSystemSox(): Promise<void> {
+    if (await commandExists("sox")) {
+        console.log("✓ SoX já está instalado.");
+        return;
+    }
+
+    console.log("\nSoX é necessário pelo Qwen3-TTS para processamento de áudio.");
+
+    const commands: Array<[string, string[]]> = [
+        ["sudo", ["pacman", "-S", "--needed", "--noconfirm", "sox"]],
+        ["sudo", ["apt-get", "install", "-y", "sox"]],
+        ["sudo", ["dnf", "install", "-y", "sox"]],
+        ["sudo", ["zypper", "install", "-y", "sox"]],
+    ];
+
+    for (const [command, args] of commands) {
+        if (
+            args[0] === "pacman" &&
+            !(await commandExists("pacman"))
+        ) continue;
+        if (
+            args[0] === "apt-get" &&
+            !(await commandExists("apt-get"))
+        ) continue;
+        if (
+            args[0] === "dnf" &&
+            !(await commandExists("dnf"))
+        ) continue;
+        if (
+            args[0] === "zypper" &&
+            !(await commandExists("zypper"))
+        ) continue;
+
+        console.log(
+            "Instalando SoX pelo gerenciador de pacotes. " +
+            "Se o sistema solicitar sua senha, ela será tratada somente pelo sudo."
+        );
+
+        const code = await run(command, args);
+
+        if (code === 0 && (await commandExists("sox"))) {
+            console.log("✓ SoX instalado.");
+            return;
+        }
+    }
+
+    throw new Error(
+        "Não foi possível instalar o SoX automaticamente. " +
+        "Instale o pacote 'sox' pelo gerenciador de pacotes do seu Linux e execute npm run audio:test novamente."
+    );
+}
+
 async function main(): Promise<void> {
     console.log("\n╔══════════════════════════════════════════════╗");
     console.log("║              JARVIS AUDIO SETUP              ║");
@@ -33,6 +86,8 @@ async function main(): Promise<void> {
             "Python 3 não foi encontrado. Instale Python 3 antes do setup de áudio."
         );
     }
+
+    await installSystemSox();
 
     const python = "python3";
     const venv = path.join(TTS_HOME, ".venv");
