@@ -18,7 +18,6 @@ def load_model(model_id, torch):
         model_id,
         device_map="cpu",
         dtype=torch.float32,
-        low_cpu_mem_usage=True,
         attn_implementation="sdpa",
     )
 
