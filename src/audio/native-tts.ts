@@ -102,6 +102,8 @@ export class NativeQwenTTS {
 
         await this.start();
 
+        const requestStartedAt = Date.now();
+
         const response = await fetch(
             "http://" +
                 SERVER_HOST +
@@ -131,6 +133,14 @@ export class NativeQwenTTS {
                 String(response.status)
             );
         }
+
+        const firstByteAt = Date.now();
+
+        console.log(
+            "[Audio] TTS nativo: primeiro áudio recebido em " +
+            String(firstByteAt - requestStartedAt) +
+            " ms."
+        );
 
         await this.playStream(response.body);
     }
@@ -201,6 +211,9 @@ export class NativeQwenTTS {
     private async playStream(
         body: ReadableStream<Uint8Array>
     ): Promise<void> {
+        const playbackStartedAt = Date.now();
+        let firstChunk = true;
+
         const player = spawn(
             "play",
             [
@@ -260,6 +273,20 @@ export class NativeQwenTTS {
                         )
                     );
                 }
+            });
+
+            stream.on("data", chunk => {
+                if (firstChunk) {
+                    firstChunk = false;
+
+                    console.log(
+                        "[Audio] TTS nativo: primeiro chunk encaminhado ao player em " +
+                        String(Date.now() - playbackStartedAt) +
+                        " ms."
+                    );
+                }
+
+                return chunk;
             });
 
             stream.on("error", error => {
