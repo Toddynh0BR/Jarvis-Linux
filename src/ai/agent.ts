@@ -24,8 +24,8 @@ import {
 
 const MAX_HISTORY_MESSAGES = 24;
 const FAST_MAX_TOKENS = 96;
-const EXTENDED_MAX_TOKENS = 256;
-const EXTENDED_RETRY_TOKENS = 192;
+const EXTENDED_MAX_TOKENS = 384;
+const EXTENDED_RETRY_TOKENS = 256;
 const EXTENDED_THINKING = false;
 
 const SYSTEM_PROMPT = `
@@ -196,7 +196,10 @@ export class JarvisAgent {
                 tools,
                 {
                     think,
-                    temperature: 0.1,
+                    temperature: 0.7,
+                    topP: 0.8,
+                    topK: 20,
+                    minP: 0,
                     numPredict:
                         route.mode === "extended"
                             ? EXTENDED_MAX_TOKENS
