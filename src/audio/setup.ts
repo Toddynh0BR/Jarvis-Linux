@@ -55,6 +55,37 @@ async function run(
 }
 
 
+async function ensureOpenBLAS(): Promise<void> {
+    try {
+        await fs.access("/usr/lib/libopenblas.so");
+        return;
+    } catch {
+        // Continua para a instalação pelo gerenciador de pacotes.
+    }
+
+    if (await commandExists("pacman")) {
+        console.log("OpenBLAS não foi encontrado. Instalando a dependência...");
+        const code = await run(
+            "sudo",
+            [
+                "pacman",
+                "-S",
+                "--needed",
+                "--noconfirm",
+                "openblas"
+            ]
+        );
+
+        if (code === 0) {
+            return;
+        }
+    }
+
+    throw new Error(
+        "OpenBLAS não foi encontrado. Instale a biblioteca BLAS do seu sistema e execute npm run audio:setup novamente."
+    );
+}
+
 async function installNativeTTS(): Promise<void> {
     console.log("\nConfigurando backend nativo de TTS (Qwen3-TTS C)...");
 
@@ -67,6 +98,8 @@ async function installNativeTTS(): Promise<void> {
             );
         }
     }
+
+    await ensureOpenBLAS();
 
     await fs.mkdir(TTS_NATIVE_HOME, { recursive: true });
 
