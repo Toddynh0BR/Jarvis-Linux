@@ -27,7 +27,7 @@ Depois:
 
 `npm start`
 
-Na primeira fala, o download dos modelos pode ser grande e a primeira inicialização pode demorar. Isso é esperado.
+Na primeira fala, o download pode passar de 7 GB no total e a primeira inicialização pode demorar. Isso é esperado.
 
 ## Voz
 
