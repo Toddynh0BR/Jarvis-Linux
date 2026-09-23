@@ -27,6 +27,7 @@ const cases: BenchmarkCase[] = [
         name: "CPU",
         prompt: "Qual é meu processador?",
         expectedMode: "fast",
+        expectedDepth: "fast",
         keywords: ["5600gt", "amd"],
         expectTool: true,
         maxSeconds: 1
@@ -73,6 +74,7 @@ const cases: BenchmarkCase[] = [
         name: "Ferramenta",
         prompt: "Mostre as informações do meu sistema.",
         expectedMode: "fast",
+        expectedDepth: "fast",
         keywords: ["cpu", "ram"],
         expectTool: true,
         maxSeconds: 1
