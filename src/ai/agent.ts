@@ -19,10 +19,7 @@ import {
 } from "./router";
 import { resolveDirectToolIntent } from "../tools/intent";
 import { JarvisTTS } from "../audio/tts";
-import {
-    PerformanceTracker,
-    formatPerformance
-} from "./performance";
+import { PerformanceTracker } from "./performance";
 
 const MAX_HISTORY_MESSAGES = 24;
 const FAST_MAX_TOKENS = 96;
@@ -134,7 +131,8 @@ export class JarvisAgent {
         const directTool = resolveDirectToolIntent(userMessage);
 
         if (directTool) {
-            tracker.recordToolCall();\n
+            tracker.recordToolCall();
+
             const result = await executeTool(
                 directTool.toolName,
                 directTool.args,
@@ -144,10 +142,6 @@ export class JarvisAgent {
             const answer = formatDirectToolResult(
                 directTool.type,
                 result
-            );
-
-            console.log(
-                formatPerformance(tracker.snapshot(route.mode))
             );
 
             return answer;
@@ -229,9 +223,11 @@ export class JarvisAgent {
                     this.messages.push({
                         role: "assistant",
                         content: retryAnswer
-                    });\n
+                    });
+
                     return retryAnswer;
-                }\n
+                }
+
                 return "Não consegui gerar uma resposta final para essa solicitação.";
             }
 
@@ -260,7 +256,8 @@ export class JarvisAgent {
                 this.messages.push({
                     role: "assistant",
                     content: fallbackAnswer
-                });\n
+                });
+
                 return fallbackAnswer;
             }
 
@@ -288,7 +285,8 @@ export class JarvisAgent {
                     args = {};
                 }
 
-                tracker.recordToolCall();\n
+                tracker.recordToolCall();
+
                 const result = await executeTool(
                     name,
                     args,
@@ -303,7 +301,8 @@ export class JarvisAgent {
             }
 
             this.trimHistory();
-        }\n
+        }
+
         return "Não consegui concluir a solicitação porque o limite de execução de ferramentas foi atingido.";
     }
 
@@ -341,8 +340,8 @@ function cleanAssistantContent(content: string): string {
         .replace(/<think>[\\s\\S]*?<\\/think>/gi, "")
         .replace(/<think>[\\s\\S]*/gi, "")
         .replace(/\\[([^\\]]+)\\]\\([^)]*\\)/g, "$1")
-        .replace(/\\x60{3}[a-zA-Z0-9_-]*\\n?/g, "")
-        .replace(/\\x60/g, "")
+        .replace(/\x60{3}[a-zA-Z0-9_-]*\\n?/g, "")
+        .replace(/\x60/g, "")
         .replace(/^\\s*#{1,6}\\s*/gm, "")
         .replace(/^\\s*[-*+]\\s+/gm, "")
         .replace(/^\\s*\\d+[.)]\\s+/gm, "")
@@ -352,10 +351,9 @@ function cleanAssistantContent(content: string): string {
         .replace(/&nbsp;/gi, " ")
         .replace(/\\|/g, ", ")
         .replace(/--+/g, ", ")
-        .replace(/—|–/g, ", ")
+        .replace(/[—–]/g, ", ")
         .replace(/[\\u{1F1E6}-\\u{1F1FF}\\u{1F300}-\\u{1FAFF}\\u{2600}-\\u{27BF}]/gu, "")
         .replace(/[ \\t]+/g, " ")
-        .replace(/ \\n /g, "\\n")
         .replace(/\\n{3,}/g, "\\n\\n")
         .trim();
 }
@@ -388,14 +386,14 @@ function formatDirectToolResult(
 
         return [
             "Informações do sistema:",
-            `• Sistema: ${String(data.distribution ?? data.os ?? "desconhecido")}`,
-            `• Kernel: ${String(data.kernel ?? "desconhecido")}`,
-            `• CPU: ${String(data.cpu ?? "desconhecida")}`,
-            `• Núcleos/threads: ${String(data.cores ?? "?")}/${String(data.threads ?? "?")}`,
-            `• RAM: ${String(data.ramGB ?? "?")} GB`,
-            `• RAM disponível: ${String(data.availableRamGB ?? "?")} GB`,
-            `• GPU: ${String(data.gpu ?? "desconhecida")}`,
-            `• Armazenamento livre: ${String(data.storageFreeGB ?? "?")} GB`
+            `Sistema: ${String(data.distribution ?? data.os ?? "desconhecido")}`,
+            `Kernel: ${String(data.kernel ?? "desconhecido")}`,
+            `CPU: ${String(data.cpu ?? "desconhecida")}`,
+            `Núcleos e threads: ${String(data.cores ?? "?")} e ${String(data.threads ?? "?")}`,
+            `RAM: ${String(data.ramGB ?? "?")} GB`,
+            `RAM disponível: ${String(data.availableRamGB ?? "?")} GB`,
+            `GPU: ${String(data.gpu ?? "desconhecida")}`,
+            `Armazenamento livre: ${String(data.storageFreeGB ?? "?")} GB`
         ].join("\n");
     } catch {
         return result;
@@ -424,7 +422,8 @@ Digite "sair" para encerrar.
 Digite "limpar" para limpar a conversa.
 `);
 
-    // Pré-carrega o motor de voz em segundo plano para que a primeira resposta\n    // não precise esperar a inicialização do modelo. Falhas continuam silenciosas\n    // até que uma fala seja solicitada.\n    void tts.start().catch(() => undefined);\n\n    const rl = readline.createInterface({
+    // Pré-carrega o motor de voz em segundo plano para que a primeira resposta\n    // não precise esperar a inicialização do modelo. Falhas continuam silenciosas\n    // até que uma fala seja solicitada.\n    void tts.start().catch(() => undefined);
+\n    const rl = readline.createInterface({
         input,
         output,
         prompt: "Você > "
