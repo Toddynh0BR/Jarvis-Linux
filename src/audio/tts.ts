@@ -104,9 +104,15 @@ export class JarvisTTS {
                 try {
                     await this.native.speak(cleanText);
                     return;
-                } catch {
+                } catch (error) {
                     this.nativeFailed = true;
                     await this.native.stop();
+
+                    console.warn(
+                        "[Audio] TTS nativo falhou: " +
+                        (error instanceof Error ? error.message : String(error)) +
+                        ". Usando fallback Python."
+                    );
                 }
             }
 
