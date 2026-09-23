@@ -24,7 +24,7 @@ const FAST_PATTERNS = [
 const DEEP_PATTERNS = [
     { pattern: /\b(debug|debugue|depure|erro|bug|falha|problema)\b/i, reason: "investigação de problema técnico" },
     { pattern: /\b(projete|projetar|planeje|planejar|arquitetura|arquitetar|estruture|estruturar)\b/i, reason: "planejamento ou arquitetura complexa" },
-    { pattern: /\b(programa[cç][aã]o|implementar|implementa[cç][aã]o|c[oó]digo|typescript|javascript|java|spring|react|sql|docker|backend|frontend)\b/i, reason: "problema técnico que pode exigir resposta detalhada" },
+    { pattern: /\b(programa[cç][aã]o|implementar|implementa[cç][aã]o|c[oó]digo|typescript|javascript)\b/i, reason: "problema técnico que pode exigir resposta detalhada" },
     { pattern: /\b(passo a passo|passo-a-passo|detalhadamente|em detalhes|com exemplos|exemplos completos)\b/i, reason: "solicitação explícita de resposta detalhada" }
 ];
 
