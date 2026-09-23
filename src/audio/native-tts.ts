@@ -171,17 +171,13 @@ export class NativeQwenTTS {
 
         const child = spawn(this.binaryPath, args, {
             cwd: path.dirname(this.binaryPath),
-            stdio: ["ignore", "pipe", "ignore"],
+            stdio: "ignore",
             env: {
                 ...process.env
             }
         });
 
         this.server = child;
-
-        child.stdout.on("data", () => {
-            // O backend nativo permanece silencioso no terminal do Jarvis.
-        });
 
         child.on("error", () => {
             // O erro será propagado pelo timeout/requisição de fala.
@@ -263,9 +259,18 @@ export class NativeQwenTTS {
             });
 
             stream.on("error", error => {
-                player.stdin.destroy(error);
+                player.stdin?.destroy(error);
                 finish(error);
             });
+
+            if (!player.stdin) {
+                finish(
+                    new Error(
+                        "O reprodutor de áudio não abriu a entrada de áudio."
+                    )
+                );
+                return;
+            }
 
             stream.pipe(player.stdin);
         });
