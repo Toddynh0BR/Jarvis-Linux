@@ -1,4 +1,4 @@
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 import { promises as fs } from "node:fs";
 import * as net from "node:net";
 import * as os from "node:os";
@@ -55,9 +55,9 @@ export class NativeQwenTTS {
     private readonly modelDirectory: string;
     private readonly binaryPath: string;
     private readonly port: number;
-    private server: ChildProcessWithoutNullStreams | null = null;
+    private server: ChildProcess | null = null;
     private readyPromise: Promise<void> | null = null;
-    private player: ChildProcessWithoutNullStreams | null = null;
+    private player: ChildProcess | null = null;
 
     constructor(options: NativeTTSOptions = {}) {
         this.home = options.home ?? DEFAULT_HOME;
