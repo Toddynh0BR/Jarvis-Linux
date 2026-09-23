@@ -4,6 +4,7 @@ import { promises as fs } from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { commandExists } from "../setup/diagnostics";
+import { NativeQwenTTS } from "./native-tts";
 
 const DEFAULT_VOICE_INSTRUCTION =
     process.env.JARVIS_TTS_VOICE ??
@@ -65,8 +66,17 @@ export class JarvisTTS {
     >();
     private speaking = false;
     private warnedUnavailable = false;
+    private readonly native = new NativeQwenTTS();
+    private nativeFailed = false;
 
     async start(): Promise<void> {
+        try {
+            await this.native.start();
+            return;
+        } catch {
+            this.nativeFailed = true;
+        }
+
         if (this.readyPromise) {
             return this.readyPromise;
         }
@@ -80,13 +90,24 @@ export class JarvisTTS {
     }
 
     async speak(text: string): Promise<void> {
-        const chunks = splitSpeechText(sanitizeSpeechText(text));
+        const cleanText = sanitizeSpeechText(text);
 
-        if (chunks.length === 0) {
+        if (!cleanText) {
             return;
         }
 
         try {
+            if (!this.nativeFailed) {
+                try {
+                    await this.native.speak(cleanText);
+                    return;
+                } catch {
+                    this.nativeFailed = true;
+                }
+            }
+
+            const chunks = splitSpeechText(cleanText);
+
             for (const chunk of chunks) {
                 const filePath = await this.generate(chunk);
                 await this.play(filePath);
@@ -103,6 +124,8 @@ export class JarvisTTS {
     }
 
     async stop(): Promise<void> {
+        await this.native.stop();
+
         this.worker?.kill();
         this.worker = null;
         this.lines?.close();
