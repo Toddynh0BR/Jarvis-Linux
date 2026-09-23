@@ -203,11 +203,7 @@ export class JarvisAgent {
                     temperature: 0.7,
                     topP: 0.8,
                     topK: 20,
-                    minP: 0,
-                    numPredict:
-                        route.mode === "extended"
-                            ? EXTENDED_MAX_TOKENS
-                            : FAST_MAX_TOKENS
+                    numPredict: maxTokens
                 }
             );
 
