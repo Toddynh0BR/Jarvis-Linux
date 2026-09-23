@@ -70,11 +70,14 @@ export class JarvisTTS {
     private nativeFailed = false;
 
     async start(): Promise<void> {
-        try {
-            await this.native.start();
-            return;
-        } catch {
-            this.nativeFailed = true;
+        if (!this.nativeFailed) {
+            try {
+                await this.native.start();
+                return;
+            } catch {
+                this.nativeFailed = true;
+                await this.native.stop();
+            }
         }
 
         if (this.readyPromise) {
@@ -103,6 +106,7 @@ export class JarvisTTS {
                     return;
                 } catch {
                     this.nativeFailed = true;
+                    await this.native.stop();
                 }
             }
 
