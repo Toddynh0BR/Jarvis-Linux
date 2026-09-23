@@ -38,10 +38,15 @@ const TTS_NATIVE_MODEL = path.join(
     "qwen3-tts-0.6b"
 );
 
-async function run(command: string, args: string[]): Promise<number> {
+async function run(
+    command: string,
+    args: string[],
+    cwd?: string
+): Promise<number> {
     return new Promise(resolve => {
         const child = spawn(command, args, {
-            stdio: "inherit"
+            stdio: "inherit",
+            cwd
         });
 
         child.on("error", () => resolve(1));
@@ -114,6 +119,7 @@ async function installNativeTTS(): Promise<void> {
             (await run(
                 "./download_model.sh",
                 ["--model", "small"],
+                TTS_NATIVE_SOURCE
             )) !== 0
         ) {
             throw new Error(
