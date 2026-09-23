@@ -189,7 +189,7 @@ export class JarvisTTS {
                         "Na primeira execução o modelo pode precisar ser baixado."
                     )
                 );
-            }, 180_000);
+            }, 900_000);
 
             const onLine = (line: string) => {
                 let message: WorkerMessage;
