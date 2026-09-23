@@ -244,31 +244,36 @@ export async function chat(
 
     const normalizedMessages: OllamaChatMessage[] = messages.map(
         (message, index) => ({
-        role: message.role,
-        content:
-            thinkingDisabled && index === 0 && message.role === "system"
-                ? message.content.trimEnd() + "\n/no_think"
-                : message.content,
-        ...(message.tool_name
-            ? { tool_name: message.tool_name }
-            : {}),
-        ...(message.thinking
-            ? { thinking: message.thinking }
-            : {}),
-        ...(message.tool_calls
-            ? {
-                tool_calls: message.tool_calls.map(toolCall => ({
-                    function: {
-                        name: toolCall.function.name,
-                        arguments:
-                            typeof toolCall.function.arguments === "string"
-                                ? parseToolArguments(toolCall.function.arguments)
-                                : toolCall.function.arguments
-                    }
-                }))
-            }
-            : {})
-    })) as OllamaChatMessage[];
+            role: message.role,
+            content:
+                thinkingDisabled &&
+                index === 0 &&
+                message.role === "system"
+                    ? message.content.trimEnd() + "\n/no_think"
+                    : message.content,
+            ...(message.tool_name
+                ? { tool_name: message.tool_name }
+                : {}),
+            ...(message.thinking
+                ? { thinking: message.thinking }
+                : {}),
+            ...(message.tool_calls
+                ? {
+                    tool_calls: message.tool_calls.map(toolCall => ({
+                        function: {
+                            name: toolCall.function.name,
+                            arguments:
+                                typeof toolCall.function.arguments === "string"
+                                    ? parseToolArguments(
+                                        toolCall.function.arguments
+                                    )
+                                    : toolCall.function.arguments
+                        }
+                    }))
+                }
+                : {})
+        })
+    ) as OllamaChatMessage[];
 
     return ollama.chat({
         model: modelName,
