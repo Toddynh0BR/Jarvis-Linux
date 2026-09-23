@@ -1,12 +1,13 @@
 import { ensureOllamaReady, OLLAMA_MODEL } from "../ai/ollama";
 import { JarvisAgent } from "../ai/agent";
-import { classifyMessage, type ResponseMode } from "../ai/router";
+import { classifyMessage, type ResponseMode, type ResponseDepth } from "../ai/router";
 import { resolveDirectToolIntent } from "../tools/intent";
 
 interface BenchmarkCase {
     name: string;
     prompt: string;
     expectedMode: ResponseMode;
+    expectedDepth: ResponseDepth;
     keywords?: string[];
     expectTool?: boolean;
     maxSeconds?: number;
@@ -17,6 +18,7 @@ const cases: BenchmarkCase[] = [
         name: "Sistema operacional",
         prompt: "Qual sistema operacional estou usando?",
         expectedMode: "fast",
+        expectedDepth: "fast",
         keywords: ["cachy", "linux"],
         expectTool: true,
         maxSeconds: 1
@@ -33,12 +35,14 @@ const cases: BenchmarkCase[] = [
         name: "Saudação",
         prompt: "Olá Jarvis",
         expectedMode: "fast",
+        expectedDepth: "fast",
         maxSeconds: 2
     },
     {
         name: "Explicação REST",
         prompt: "Explique como funciona uma API REST e quais são seus principais componentes.",
         expectedMode: "extended",
+        expectedDepth: "standard",
         keywords: ["http", "api"],
         maxSeconds: 30
     },
@@ -53,6 +57,7 @@ const cases: BenchmarkCase[] = [
         name: "Programação",
         prompt: "Tenho um array de usuários com nome, idade e cidade. Preciso filtrar apenas maiores de idade e depois agrupá-los por cidade. Explique como eu poderia estruturar essa solução em TypeScript e qual abordagem você usaria.",
         expectedMode: "extended",
+        expectedDepth: "deep",
         keywords: ["typescript", "filter", "cidade"],
         maxSeconds: 30
     },
@@ -60,6 +65,7 @@ const cases: BenchmarkCase[] = [
         name: "Causal",
         prompt: "Por que uma aplicação Node.js pode ficar lenta mesmo usando operações assíncronas?",
         expectedMode: "extended",
+        expectedDepth: "standard",
         keywords: ["event", "bloque"],
         maxSeconds: 30
     },
@@ -142,18 +148,25 @@ async function main(): Promise<void> {
         console.log(
             "Rota: " +
             route.mode +
+            "/" +
+            route.depth +
             " | esperado: " +
             test.expectedMode +
+            "/" +
+            test.expectedDepth +
             " | confiança: " +
             Math.round(route.confidence * 100) +
             "%"
         );
         console.log("Motivo: " + route.reason);
 
-        if (route.mode === test.expectedMode) {
+        if (
+            route.mode === test.expectedMode &&
+            route.depth === test.expectedDepth
+        ) {
             passedRouting++;
         } else {
-            console.log("⚠ Roteamento diferente do esperado.");
+            console.log("⚠ Roteamento ou profundidade diferente do esperado.");
         }
 
         const started = performance.now();
