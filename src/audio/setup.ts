@@ -81,14 +81,18 @@ async function main(): Promise<void> {
 
     console.log("\n✓ Ambiente de voz instalado.");
     console.log(
-        "✓ Motor: Qwen3-TTS VoiceDesign 1.7B (local)."
+        "✓ Design: Qwen3-TTS VoiceDesign 1.7B (cria a voz base)."
+    );
+    console.log(
+        "✓ Síntese: Qwen3-TTS Base 0.6B (reutiliza a mesma voz local)."
     );
     console.log(
         "✓ Voz: masculina brasileira, grave, calma e sofisticada."
     );
     console.log(
-        "\nO modelo principal tem 4.52 GB e o tokenizer 682 MB; " +
-        "o download ocorre do Hugging Face na primeira fala."
+        "\nNa primeira fala, o Jarvis baixa os modelos locais de VoiceDesign e Base. " +
+        "Os checkpoints têm cerca de 4.52 GB e 2.52 GB, respectivamente; " +
+        "o tokenizer é compartilhado no cache local."
     );
     console.log(
         "Depois do download, a inferência é executada localmente no computador."
