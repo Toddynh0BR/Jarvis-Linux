@@ -17,8 +17,13 @@ const TOOL_INTENT_PATTERNS = [
 
 const FAST_PATTERNS = [
     /^(oi|olá|ola|hey|ei|bom dia|boa tarde|boa noite)\b/i,
-    /^(qual|quanto|onde|quando) (é|e|está|esta|fica|tenho|tem|foi|são|sao) /i,
+    /^(como você está|como voce esta|tudo bem|como vai)\b/i,
     /^(abra|abrir|feche|fechar|inicie|iniciar|execute|executar|mostre|mostrar|liste|listar)\b/i
+];
+
+const KNOWLEDGE_PATTERNS = [
+    /^(quem|qual|quais|o que|oq|do que|onde|quando|quanto|quantos|quantas)\b/i,
+    /\b(atual|atualmente|hoje|presidente|governador|prefeito|capital|população|populacao|história|historia|definição|definicao|composto|composição|composicao)\b/i
 ];
 
 const DEEP_PATTERNS = [
@@ -59,6 +64,10 @@ export function classifyMessage(message: string): RouteDecision {
         item.pattern.test(normalized)
     );
 
+    const knowledgeMatch = KNOWLEDGE_PATTERNS.some(pattern =>
+        pattern.test(normalized)
+    );
+
     if (deepMatch) {
         return {
             mode: "extended",
@@ -83,8 +92,18 @@ export function classifyMessage(message: string): RouteDecision {
         return {
             mode: "fast",
             depth: "fast",
-            reason: "comando ou pergunta curta",
-            confidence: 0.85,
+            reason: "comando simples ou conversa casual",
+            confidence: 0.9,
+            toolPreferred
+        };
+    }
+
+    if (knowledgeMatch) {
+        return {
+            mode: "extended",
+            depth: "standard",
+            reason: "pergunta factual ou de conhecimento geral",
+            confidence: 0.9,
             toolPreferred
         };
     }
