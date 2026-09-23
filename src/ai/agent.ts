@@ -52,6 +52,9 @@ Regras:
 - Não comece a resposta descrevendo o pedido do usuário.
 - Não use frases como "First, I..." ou equivalentes.
 - Comece diretamente pela resposta ao usuário.
+- A saída final deve ser texto simples, próprio para leitura em voz alta.
+- Não use Markdown, emojis, listas com marcadores, numeração formatada, tabelas, blocos de código, crases, asteriscos ou símbolos de formatação.
+- Prefira frases corridas, separadas por pontuação e quebras de linha naturais.
 `;
 
 export interface AgentOptions {
@@ -263,7 +266,7 @@ export class JarvisAgent {
 
             this.messages.push({
                 role: "assistant",
-                content: assistantMessage.content ?? "",
+                content: content,
                 thinking: assistantMessage.thinking,
                 tool_calls: assistantMessage.tool_calls as any
             });
