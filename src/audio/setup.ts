@@ -100,6 +100,7 @@ async function installNativeTTS(): Promise<void> {
         (await run(
             "make",
             ["blas"],
+            TTS_NATIVE_SOURCE
         )) !== 0
     ) {
         throw new Error(
