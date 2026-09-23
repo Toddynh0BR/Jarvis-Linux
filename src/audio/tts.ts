@@ -7,7 +7,7 @@ import { commandExists } from "../setup/diagnostics";
 
 const DEFAULT_VOICE_INSTRUCTION =
     process.env.JARVIS_TTS_VOICE ??
-    "Voz masculina adulta brasileira, grave e aveludada, muito clara e articulada, calma, sofisticada e extremamente controlada. Fale com autoridade serena, inteligência e elegância, como um assistente de inteligência artificial avançado. Ritmo moderado, pausas naturais, pouca dramaticidade e sem entusiasmo exagerado. A voz deve soar tecnológica e refinada, mas humana e natural. Não imite nenhuma pessoa real.";
+    "Voz masculina adulta, muito natural e humana, com timbre grave, quente, encorpado e ressonante. Pronúncia exclusivamente em português brasileiro, com sotaque brasileiro neutro e sem qualquer característica de português europeu. Voz elegante, confiante, calma e extremamente articulada, com presença cinematográfica de um assistente de inteligência artificial avançado. Fale com autoridade serena e inteligência, em ritmo moderado, usando pausas curtas e naturais. Pouca dramaticidade, nenhuma empolgação exagerada e nenhuma voz robótica. O resultado deve soar sofisticado, maduro, tecnológico e convincente, como um assistente pessoal de IA de um filme de ficção científica, sem imitar a voz de uma pessoa real.";
 
 const TTS_DESIGN_MODEL =
     process.env.JARVIS_TTS_DESIGN_MODEL ??
@@ -19,7 +19,7 @@ const TTS_CLONE_MODEL =
 
 const TTS_REFERENCE_TEXT =
     process.env.JARVIS_TTS_REFERENCE_TEXT ??
-    "Boa tarde. Estou à sua disposição. Todos os sistemas estão operacionais e prontos para executar suas solicitações.";
+    "Boa tarde. Estou à sua disposição. Todos os sistemas estão operacionais e prontos para executar suas solicitações. Como posso ajudá-lo?";
 
 const TTS_HOME = path.join(
     os.homedir(),
@@ -31,7 +31,7 @@ const TTS_HOME = path.join(
 
 const TTS_REFERENCE_PATH = path.join(
     TTS_HOME,
-    "jarvis_voice_reference.wav"
+    "jarvis_voice_reference_v2.wav"
 );
 
 const TTS_LANGUAGE = "Portuguese";
