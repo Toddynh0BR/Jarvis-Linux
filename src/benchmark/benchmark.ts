@@ -51,6 +51,7 @@ const cases: BenchmarkCase[] = [
         name: "Comparação",
         prompt: "Compare Node.js, Spring Boot e FastAPI considerando desempenho, ecossistema e facilidade de desenvolvimento.",
         expectedMode: "extended",
+        expectedDepth: "standard",
         keywords: ["node", "spring", "fastapi"],
         maxSeconds: 30
     },
