@@ -116,7 +116,11 @@ export class NativeQwenTTS {
                 body: JSON.stringify({
                     text: cleanText,
                     language: "Portuguese",
-                    speaker: VOICE
+                    speaker: VOICE,
+                    temperature: 0.35,
+                    topK: 30,
+                    topP: 0.9,
+                    repetitionPenalty: 1.05
                 })
             }
         );
