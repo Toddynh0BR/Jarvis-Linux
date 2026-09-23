@@ -397,3 +397,79 @@ function sanitizeSpeechText(text: string): string {
         .trim();
 }
 
+
+
+function splitSpeechText(text: string, maxCharacters = 220): string[] {
+    if (!text) {
+        return [];
+    }
+
+    const sentences = text
+        .split(/(?<=[.!?;:])\s+/)
+        .map(part => part.trim())
+        .filter(Boolean);
+
+    const chunks: string[] = [];
+    let current = "";
+
+    for (const sentence of sentences) {
+        if (!current) {
+            if (sentence.length <= maxCharacters) {
+                current = sentence;
+                continue;
+            }
+
+            chunks.push(...splitLongSpeechPart(sentence, maxCharacters));
+            continue;
+        }
+
+        const candidate = current + " " + sentence;
+
+        if (candidate.length <= maxCharacters) {
+            current = candidate;
+        } else {
+            chunks.push(current);
+            current = sentence;
+
+            if (current.length > maxCharacters) {
+                chunks.push(...splitLongSpeechPart(current, maxCharacters));
+                current = "";
+            }
+        }
+    }
+
+    if (current) {
+        chunks.push(current);
+    }
+
+    return chunks;
+}
+
+function splitLongSpeechPart(text: string, maxCharacters: number): string[] {
+    const words = text.split(/\s+/).filter(Boolean);
+    const chunks: string[] = [];
+    let current = "";
+
+    for (const word of words) {
+        const candidate = current
+            ? current + " " + word
+            : word;
+
+        if (candidate.length <= maxCharacters) {
+            current = candidate;
+            continue;
+        }
+
+        if (current) {
+            chunks.push(current);
+        }
+
+        current = word;
+    }
+
+    if (current) {
+        chunks.push(current);
+    }
+
+    return chunks;
+}
