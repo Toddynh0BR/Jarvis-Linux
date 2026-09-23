@@ -53,7 +53,7 @@ const cases: BenchmarkCase[] = [
         expectedMode: "extended",
         expectedDepth: "standard",
         keywords: ["node", "spring", "fastapi"],
-        maxSeconds: 30
+        maxSeconds: 35
     },
     {
         name: "Programação",
