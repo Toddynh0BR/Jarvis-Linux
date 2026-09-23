@@ -14,7 +14,8 @@ import {
 } from "../tools/registry";
 import {
     classifyMessage,
-    type ResponseMode
+    type ResponseMode,
+    type ResponseDepth
 } from "./router";
 import { resolveDirectToolIntent } from "../tools/intent";
 import {
@@ -24,7 +25,8 @@ import {
 
 const MAX_HISTORY_MESSAGES = 24;
 const FAST_MAX_TOKENS = 96;
-const EXTENDED_MAX_TOKENS = 384;
+const STANDARD_MAX_TOKENS = 384;
+const DEEP_MAX_TOKENS = 768;
 const EXTENDED_RETRY_TOKENS = 256;
 const EXTENDED_THINKING = false;
 
@@ -189,6 +191,8 @@ export class JarvisAgent {
             route.mode === "extended" &&
             EXTENDED_THINKING;
 
+        const maxTokens = getMaxOutputTokens(route.mode, route.depth);
+
         for (let iteration = 0; iteration < 8; iteration++) {
             const response = await chat(
                 this.messages,
@@ -199,20 +203,11 @@ export class JarvisAgent {
                     temperature: 0.7,
                     topP: 0.8,
                     topK: 20,
-                    minP: 0,
-                    numPredict:
-                        route.mode === "extended"
-                            ? EXTENDED_MAX_TOKENS
-                            : FAST_MAX_TOKENS
+                    numPredict: maxTokens
                 }
             );
 
             tracker.recordModelResponse(response);
-
-            const maxTokens =
-                route.mode === "extended"
-                    ? EXTENDED_MAX_TOKENS
-                    : FAST_MAX_TOKENS;
 
             if (
                 response.eval_count !== undefined &&
@@ -390,6 +385,19 @@ export class JarvisAgent {
             }
         ];
     }
+}
+
+function getMaxOutputTokens(
+    mode: ResponseMode,
+    depth: ResponseDepth
+): number {
+    if (mode === "fast" || depth === "fast") {
+        return FAST_MAX_TOKENS;
+    }
+
+    return depth === "deep"
+        ? DEEP_MAX_TOKENS
+        : STANDARD_MAX_TOKENS;
 }
 
 function containsReasoningLeak(content: string): boolean {
