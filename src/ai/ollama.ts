@@ -12,7 +12,9 @@ export const OLLAMA_API_URL =
         : "http://127.0.0.1:11434";
 
 export const OLLAMA_MODEL =
-    process.env.JARVIS_MODEL ?? "qwen3:4b";
+    // Qwen3-4B-Instruct-2507 is the official non-thinking 4B variant.
+    // This avoids relying on Qwen3-4B thinking toggles for the main model.
+    process.env.JARVIS_MODEL ?? "qwen3:4b-instruct";
 
 export const OLLAMA_FAST_MODEL =
     process.env.JARVIS_FAST_MODEL ?? "qwen3:1.7b";
@@ -183,6 +185,7 @@ export async function testModel(
     try {
         const response = await ollama.chat({
             model: modelName,
+            think: false,
             messages: [
                 {
                     role: "user",
