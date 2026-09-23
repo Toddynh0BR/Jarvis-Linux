@@ -9,9 +9,30 @@ const DEFAULT_VOICE_INSTRUCTION =
     process.env.JARVIS_TTS_VOICE ??
     "Voz masculina adulta brasileira, grave e aveludada, muito clara e articulada, calma, sofisticada e extremamente controlada. Fale com autoridade serena, inteligência e elegância, como um assistente de inteligência artificial avançado. Ritmo moderado, pausas naturais, pouca dramaticidade e sem entusiasmo exagerado. A voz deve soar tecnológica e refinada, mas humana e natural. Não imite nenhuma pessoa real.";
 
-const TTS_MODEL =
-    process.env.JARVIS_TTS_MODEL ??
+const TTS_DESIGN_MODEL =
+    process.env.JARVIS_TTS_DESIGN_MODEL ??
     "Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign";
+
+const TTS_CLONE_MODEL =
+    process.env.JARVIS_TTS_CLONE_MODEL ??
+    "Qwen/Qwen3-TTS-12Hz-0.6B-Base";
+
+const TTS_REFERENCE_TEXT =
+    process.env.JARVIS_TTS_REFERENCE_TEXT ??
+    "Boa tarde. Estou à sua disposição. Todos os sistemas estão operacionais e prontos para executar suas solicitações.";
+
+const TTS_HOME = path.join(
+    os.homedir(),
+    ".local",
+    "share",
+    "jarvis",
+    "tts"
+);
+
+const TTS_REFERENCE_PATH = path.join(
+    TTS_HOME,
+    "jarvis_voice_reference.wav"
+);
 
 const TTS_LANGUAGE = "Portuguese";
 
@@ -106,10 +127,16 @@ export class JarvisTTS {
             python,
             [
                 scriptPath,
-                "--model",
-                TTS_MODEL,
+                "--design-model",
+                TTS_DESIGN_MODEL,
+                "--clone-model",
+                TTS_CLONE_MODEL,
                 "--voice",
-                DEFAULT_VOICE_INSTRUCTION
+                DEFAULT_VOICE_INSTRUCTION,
+                "--reference",
+                TTS_REFERENCE_PATH,
+                "--reference-text",
+                TTS_REFERENCE_TEXT
             ],
             {
                 stdio: ["pipe", "pipe", "pipe"],
