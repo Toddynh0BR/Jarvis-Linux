@@ -188,7 +188,8 @@ export class JarvisAgent {
             if (
                 response.eval_count !== undefined &&
                 response.eval_count >= maxTokens
-            ) {\n                }
+            ) {
+                }
 
             const assistantMessage = response.message;
             const toolCalls = assistantMessage.tool_calls ?? [];
@@ -199,7 +200,8 @@ export class JarvisAgent {
                 toolCalls.length === 0 &&
                 route.mode === "extended" &&
                 containsReasoningLeak(rawContent)
-            ) {\n
+            ) {
+
                 const retry = await chat(
                     this.messages,
                     model,
@@ -235,7 +237,8 @@ export class JarvisAgent {
                 toolCalls.length === 0 &&
                 !content &&
                 route.mode === "extended"
-            ) {\n
+            ) {
+
                 const fallback = await chat(
                     this.messages,
                     model,
@@ -268,7 +271,8 @@ export class JarvisAgent {
                 tool_calls: assistantMessage.tool_calls as any
             });
 
-            if (toolCalls.length === 0) {\n
+            if (toolCalls.length === 0) {
+
                 return content;
             }
 
@@ -337,24 +341,24 @@ function containsReasoningLeak(content: string): boolean {
 
 function cleanAssistantContent(content: string): string {
     return content
-        .replace(/<think>[\\s\\S]*?<\\/think>/gi, "")
-        .replace(/<think>[\\s\\S]*/gi, "")
-        .replace(/\\[([^\\]]+)\\]\\([^)]*\\)/g, "$1")
-        .replace(/\x60{3}[a-zA-Z0-9_-]*\\n?/g, "")
+        .replace(/<think>[\s\S]*?<\/think>/gi, "")
+        .replace(/<think>[\s\S]*/gi, "")
+        .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+        .replace(/\x60{3}[a-zA-Z0-9_-]*\n?/g, "")
         .replace(/\x60/g, "")
-        .replace(/^\\s*#{1,6}\\s*/gm, "")
-        .replace(/^\\s*[-*+]\\s+/gm, "")
-        .replace(/^\\s*\\d+[.)]\\s+/gm, "")
-        .replace(/^\\s*[-*_]{3,}\\s*$/gm, "")
-        .replace(/\\*{1,3}|_{1,3}/g, "")
-        .replace(/\\u00a0/g, " ")
+        .replace(/^\s*#{1,6}\s*/gm, "")
+        .replace(/^\s*[-*+]\s+/gm, "")
+        .replace(/^\s*\d+[.)]\s+/gm, "")
+        .replace(/^\s*[-*_]{3,}\s*$/gm, "")
+        .replace(/\*{1,3}|_{1,3}/g, "")
+        .replace(/\u00a0/g, " ")
         .replace(/&nbsp;/gi, " ")
-        .replace(/\\|/g, ", ")
+        .replace(/\|/g, ", ")
         .replace(/--+/g, ", ")
         .replace(/[—–]/g, ", ")
-        .replace(/[\\u{1F1E6}-\\u{1F1FF}\\u{1F300}-\\u{1FAFF}\\u{2600}-\\u{27BF}]/gu, "")
-        .replace(/[ \\t]+/g, " ")
-        .replace(/\\n{3,}/g, "\\n\\n")
+        .replace(/[\u{1F1E6}-\u{1F1FF}\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, "")
+        .replace(/[ \t]+/g, " ")
+        .replace(/\n{3,}/g, "\n\n")
         .trim();
 }
 
@@ -422,8 +426,12 @@ Digite "sair" para encerrar.
 Digite "limpar" para limpar a conversa.
 `);
 
-    // Pré-carrega o motor de voz em segundo plano para que a primeira resposta\n    // não precise esperar a inicialização do modelo. Falhas continuam silenciosas\n    // até que uma fala seja solicitada.\n    void tts.start().catch(() => undefined);
-\n    const rl = readline.createInterface({
+    // Pré-carrega o motor de voz em segundo plano para que a primeira resposta
+    // não precise esperar a inicialização do modelo. Falhas continuam silenciosas
+    // até que uma fala seja solicitada.
+    void tts.start().catch(() => undefined);
+
+    const rl = readline.createInterface({
         input,
         output,
         prompt: "Você > "
