@@ -367,7 +367,12 @@ async function detectTools(): Promise<Record<string, ToolInfo>> {
         "lspci",
         "lscpu",
         "systemctl",
-        "xdg-open"
+        "xdg-open",
+        "python3",
+        "pw-play",
+        "paplay",
+        "aplay",
+        "ffplay"
     ];
 
     const tools: Record<string, ToolInfo> = {};
