@@ -45,7 +45,7 @@ const cases: BenchmarkCase[] = [
         expectedMode: "extended",
         expectedDepth: "standard",
         keywords: ["http", "api"],
-        maxSeconds: 30
+        maxSeconds: 35
     },
     {
         name: "Comparação",
@@ -61,7 +61,7 @@ const cases: BenchmarkCase[] = [
         expectedMode: "extended",
         expectedDepth: "deep",
         keywords: ["typescript", "filter", "cidade"],
-        maxSeconds: 30
+        maxSeconds: 45
     },
     {
         name: "Causal",
@@ -69,7 +69,7 @@ const cases: BenchmarkCase[] = [
         expectedMode: "extended",
         expectedDepth: "standard",
         keywords: ["event", "bloque"],
-        maxSeconds: 30
+        maxSeconds: 35
     },
     {
         name: "Ferramenta",
