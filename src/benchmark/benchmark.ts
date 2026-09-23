@@ -51,9 +51,9 @@ const cases: BenchmarkCase[] = [
     },
     {
         name: "Programação",
-        prompt: "Analise este problema de programação e explique como eu poderia estruturar uma solução em TypeScript.",
+        prompt: "Tenho um array de usuários com nome, idade e cidade. Preciso filtrar apenas maiores de idade e depois agrupá-los por cidade. Explique como eu poderia estruturar essa solução em TypeScript e qual abordagem você usaria.",
         expectedMode: "extended",
-        keywords: ["typescript"],
+        keywords: ["typescript", "filter", "cidade"],
         maxSeconds: 30
     },
     {
