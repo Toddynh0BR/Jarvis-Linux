@@ -151,12 +151,8 @@ export class JarvisTTS {
 
         this.worker = child;
 
-        child.stderr.on("data", chunk => {
-            const message = chunk.toString().trim();
-
-            if (message) {
-                console.log("[TTS] " + message);
-            }
+        child.stderr.on("data", () => {
+            // stderr do worker contém apenas diagnóstico interno do motor de voz.
         });
 
         child.on("error", error => {
