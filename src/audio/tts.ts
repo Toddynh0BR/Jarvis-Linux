@@ -17,6 +17,7 @@ const TTS_LANGUAGE = "Portuguese";
 
 interface WorkerReady {
     type: "ready";
+    error?: string;
 }
 
 interface WorkerResult {
@@ -174,8 +175,13 @@ export class JarvisTTS {
 
                 if (message.type === "ready") {
                     clearTimeout(timeout);
-                    this.lines?.off("line", onLine);
-                    resolve();
+
+                    if (message.error) {
+                        reject(new Error(message.error));
+                    } else {
+                        resolve();
+                    }
+
                     return;
                 }
 
