@@ -5,7 +5,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 const execFileAsync = promisify(execFile);
 
-function delay(ms: number): Promise<void> {\n    return new Promise(resolve => setTimeout(resolve, ms));\n}\n\nexport interface CommandResult {
+function delay(ms: number): Promise<void> {    return new Promise(resolve => setTimeout(resolve, ms));}  interface CommandResult {
     stdout: string;
     stderr: string;
     code: number;
