@@ -142,6 +142,10 @@ export class NativeQwenTTS {
     }
 
     private async startServer(): Promise<void> {
+        if (await canConnect(SERVER_HOST, this.port)) {
+            return;
+        }
+
         if (!(await this.isInstalled())) {
             throw new Error(
                 "Backend nativo do Qwen3-TTS não está instalado. " +
