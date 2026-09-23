@@ -220,7 +220,6 @@ export interface ChatOptions {
     temperature?: number;
     topP?: number;
     topK?: number;
-    minP?: number;
     numPredict?: number;
 }
 
@@ -296,7 +295,6 @@ export async function chat(
             temperature: options.temperature ?? 0.7,
             top_p: options.topP ?? 0.8,
             top_k: options.topK ?? 20,
-            min_p: options.minP ?? 0,
             ...(options.numPredict
                 ? { num_predict: options.numPredict }
                 : {})
