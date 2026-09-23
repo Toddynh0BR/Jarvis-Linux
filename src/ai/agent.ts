@@ -131,14 +131,7 @@ export class JarvisAgent {
         const directTool = resolveDirectToolIntent(userMessage);
 
         if (directTool) {
-            tracker.recordToolCall();
-
-            console.log(
-                "[Tool] " +
-                directTool.toolName +
-                " | execução determinística"
-            );
-
+            tracker.recordToolCall();\n
             const result = await executeTool(
                 directTool.toolName,
                 directTool.args,
@@ -161,21 +154,6 @@ export class JarvisAgent {
             route.mode,
             route.toolPreferred === true
         );
-
-        console.log(
-            "[Router] " +
-            route.mode +
-            " | " +
-            route.reason +
-            " | confiança " +
-            Math.round(route.confidence * 100) +
-            "%" +
-            (route.toolPreferred ? " | ferramenta preferida" : "") +
-            (model !== this.model
-                ? " | modelo rápido " + model
-                : " | modelo " + model)
-        );
-
         this.messages.push({
             role: "user",
             content: userMessage
@@ -213,13 +191,7 @@ export class JarvisAgent {
             if (
                 response.eval_count !== undefined &&
                 response.eval_count >= maxTokens
-            ) {
-                console.log(
-                    "[Agent] A resposta atingiu o limite de tokens de saída (" +
-                    maxTokens +
-                    "); possível truncamento."
-                );
-            }
+            ) {\n                }
 
             const assistantMessage = response.message;
             const toolCalls = assistantMessage.tool_calls ?? [];
@@ -230,12 +202,7 @@ export class JarvisAgent {
                 toolCalls.length === 0 &&
                 route.mode === "extended" &&
                 containsReasoningLeak(rawContent)
-            ) {
-                console.log(
-                    "[Agent] Conteúdo estendido contaminado por meta-raciocínio; " +
-                    "repetindo resposta direta."
-                );
-
+            ) {\n
                 const retry = await chat(
                     this.messages,
                     model,
@@ -259,23 +226,9 @@ export class JarvisAgent {
                     this.messages.push({
                         role: "assistant",
                         content: retryAnswer
-                    });
-
-                    console.log(
-                        formatPerformance(
-                            tracker.snapshot(route.mode)
-                        )
-                    );
-
+                    });\n
                     return retryAnswer;
-                }
-
-                console.log(
-                    formatPerformance(
-                        tracker.snapshot(route.mode)
-                    )
-                );
-
+                }\n
                 return "Não consegui gerar uma resposta final para essa solicitação.";
             }
 
@@ -283,12 +236,7 @@ export class JarvisAgent {
                 toolCalls.length === 0 &&
                 !content &&
                 route.mode === "extended"
-            ) {
-                console.log(
-                    "[Agent] Resposta estendida sem conteúdo final; " +
-                    "tentando uma geração direta sem thinking."
-                );
-
+            ) {\n
                 const fallback = await chat(
                     this.messages,
                     model,
@@ -309,14 +257,7 @@ export class JarvisAgent {
                 this.messages.push({
                     role: "assistant",
                     content: fallbackAnswer
-                });
-
-                console.log(
-                    formatPerformance(
-                        tracker.snapshot(route.mode)
-                    )
-                );
-
+                });\n
                 return fallbackAnswer;
             }
 
@@ -327,13 +268,7 @@ export class JarvisAgent {
                 tool_calls: assistantMessage.tool_calls as any
             });
 
-            if (toolCalls.length === 0) {
-                console.log(
-                    formatPerformance(
-                        tracker.snapshot(route.mode)
-                    )
-                );
-
+            if (toolCalls.length === 0) {\n
                 return content;
             }
 
@@ -350,9 +285,7 @@ export class JarvisAgent {
                     args = {};
                 }
 
-                tracker.recordToolCall();
-                console.log("\n[Tool] " + name);
-
+                tracker.recordToolCall();\n
                 const result = await executeTool(
                     name,
                     args,
@@ -367,14 +300,7 @@ export class JarvisAgent {
             }
 
             this.trimHistory();
-        }
-
-        console.log(
-            formatPerformance(
-                tracker.snapshot(route.mode)
-            )
-        );
-
+        }\n
         return "Não consegui concluir a solicitação porque o limite de execução de ferramentas foi atingido.";
     }
 
@@ -478,7 +404,7 @@ Digite "sair" para encerrar.
 Digite "limpar" para limpar a conversa.
 `);
 
-    const rl = readline.createInterface({
+    // Pré-carrega o motor de voz em segundo plano para que a primeira resposta\n    // não precise esperar a inicialização do modelo. Falhas continuam silenciosas\n    // até que uma fala seja solicitada.\n    void tts.start().catch(() => undefined);\n\n    const rl = readline.createInterface({
         input,
         output,
         prompt: "Você > "
