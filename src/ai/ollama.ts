@@ -240,9 +240,15 @@ export async function chat(
     tools?: any[],
     options: ChatOptions = {}
 ) {
-    const normalizedMessages: OllamaChatMessage[] = messages.map(message => ({
+    const thinkingDisabled = options.think === false;
+
+    const normalizedMessages: OllamaChatMessage[] = messages.map(
+        (message, index) => ({
         role: message.role,
-        content: message.content,
+        content:
+            thinkingDisabled && index === 0 && message.role === "system"
+                ? message.content.trimEnd() + "\n/no_think"
+                : message.content,
         ...(message.tool_name
             ? { tool_name: message.tool_name }
             : {}),
