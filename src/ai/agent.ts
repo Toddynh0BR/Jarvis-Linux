@@ -18,6 +18,7 @@ import {
     type ResponseDepth
 } from "./router";
 import { resolveDirectToolIntent } from "../tools/intent";
+import { JarvisTTS } from "../audio/tts";
 import {
     PerformanceTracker,
     formatPerformance
@@ -463,6 +464,7 @@ export async function startAgent(
     }
 
     const agent = new JarvisAgent(options);
+    const tts = new JarvisTTS();
 
     console.log(`
 ╔══════════════════════════════════════════════╗
@@ -511,6 +513,7 @@ Digite "limpar" para limpar a conversa.
             try {
                 const answer = await agent.ask(message);
                 console.log("\nJarvis > " + answer + "\n");
+                await tts.speak(answer);
             } catch (error: any) {
                 console.error(
                     "\nJarvis > Erro: " +
@@ -523,5 +526,6 @@ Digite "limpar" para limpar a conversa.
         }
     } finally {
         rl.close();
+        await tts.stop();
     }
 }
