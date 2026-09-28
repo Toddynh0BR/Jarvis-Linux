@@ -20,6 +20,10 @@ import {
 import { resolveDirectToolIntent } from "../tools/intent";
 import { JarvisTTS } from "../audio/tts";
 import { PerformanceTracker } from "./performance";
+import {
+    findRelevantMemories,
+    saveExtractedMemories
+} from "../memory/memory";
 
 const MAX_HISTORY_MESSAGES = 24;
 const FAST_MAX_TOKENS = 96;
@@ -48,6 +52,13 @@ Regras:
 - Responda em português brasileiro, salvo se o usuário pedir outro idioma.
 - Seja direto, natural e útil.
 - Use ferramentas quando elas forem necessárias.
+- Para qualquer informação atual, recente, verificável na internet ou explicitamente solicitada como pesquisa, use a ferramenta searchWeb antes de responder.
+- Nunca responda uma pergunta factual atual com conhecimento presumido quando a ferramenta searchWeb estiver disponível.
+- Ao usar searchWeb, baseie a resposta nos resultados retornados e não invente fatos, datas ou fontes.
+- Quando os resultados forem insuficientes ou contraditórios, diga isso claramente.
+- Para informações sobre o usuário, use as memórias recuperadas pelo sistema ou a ferramenta getMemory quando necessário. Nunca invente uma memória.
+- A ferramenta remember só deve ser usada para informações que o usuário explicitamente pediu para guardar ou que sejam claramente apresentadas como um dado pessoal estável.
+- Nunca armazene senhas, tokens, chaves privadas ou dados financeiros sensíveis.
 - Nunca invente que executou uma ação.
 - Nunca diga que abriu, criou, apagou ou modificou algo sem resultado da ferramenta.
 - Não execute comandos de terminal diretamente.
@@ -142,6 +153,9 @@ export class JarvisAgent {
         const route = classifyMessage(userMessage);
         const tracker = new PerformanceTracker();
         const directTool = resolveDirectToolIntent(userMessage);
+
+        saveExtractedMemories(userMessage);
+        this.updateMemoryContext(userMessage);
 
         if (directTool) {
             tracker.recordToolCall();
@@ -330,6 +344,30 @@ export class JarvisAgent {
                 content: SYSTEM_PROMPT
             }
         ];
+    }
+
+    private updateMemoryContext(userMessage: string): void {
+        const memories = findRelevantMemories(
+            userMessage,
+            6
+        );
+
+        const memoryContext = memories.length
+            ? "\n\nMemórias relevantes do usuário:\n" +
+              memories
+                  .map(memory =>
+                      "- " +
+                      memory.category +
+                      ": " +
+                      memory.value
+                  )
+                  .join("\n")
+            : "";
+
+        this.messages[0] = {
+            role: "system",
+            content: SYSTEM_PROMPT + memoryContext
+        };
     }
 }
 
