@@ -176,21 +176,13 @@ const getMemory: JarvisTool = {
         required: ["query"]
     },
     async execute(args) {
-        const memories = listMemories(30);
-        const query = String(args.query ?? "").trim().toLocaleLowerCase("pt-BR");
-
-        const filtered = query
-            ? memories.filter(memory =>
-                (
-                    memory.category + " " +
-                    memory.key + " " +
-                    memory.value
-                ).toLocaleLowerCase("pt-BR").includes(query)
-            )
-            : memories;
+        const query = String(args.query ?? "").trim();
+        const memories = query
+            ? findRelevantMemories(query, 12)
+            : listMemories(12);
 
         return JSON.stringify({
-            memories: filtered.slice(0, 12)
+            memories
         });
     }
 };
@@ -236,6 +228,36 @@ const remember: JarvisTool = {
     }
 };
 
+const forgetMemory: JarvisTool = {
+    name: "forgetMemory",
+    description:
+        "Remove uma memória persistente quando o usuário pedir explicitamente para esquecê-la.",
+    parameters: {
+        type: "object",
+        properties: {
+            key: {
+                type: "string",
+                description: "Chave exata da memória a remover."
+            }
+        },
+        required: ["key"]
+    },
+    async execute(args) {
+        const key = String(args.key ?? "").trim();
+
+        if (!key) {
+            return JSON.stringify({
+                success: false,
+                error: "A chave da memória não foi informada."
+            });
+        }
+
+        return JSON.stringify({
+            success: deleteMemory(key)
+        });
+    }
+};
+
 const listTools: JarvisTool = {
     name: "listAvailableTools",
     description:
@@ -260,6 +282,7 @@ export const toolRegistry: JarvisTool[] = [
     searchWebTool,
     getMemory,
     remember,
+    forgetMemory,
     listTools
 ];
 
