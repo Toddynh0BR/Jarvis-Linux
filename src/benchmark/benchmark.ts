@@ -79,6 +79,31 @@ const cases: BenchmarkCase[] = [
         keywords: ["cpu", "ram"],
         expectTool: true,
         maxSeconds: 1
+    },
+    {
+        name: "Pesquisa atual",
+        prompt: "Pesquise quem é o atual presidente dos Estados Unidos.",
+        expectedMode: "extended",
+        expectedDepth: "standard",
+        keywords: ["presidente"],
+        expectTool: true,
+        maxSeconds: 15
+    },
+    {
+        name: "Memória explícita",
+        prompt: "Meu nome é Jarvis Teste.",
+        expectedMode: "fast",
+        expectedDepth: "fast",
+        maxSeconds: 2
+    },
+    {
+        name: "Consulta de memória",
+        prompt: "O que você lembra sobre mim?",
+        expectedMode: "extended",
+        expectedDepth: "standard",
+        keywords: ["teste"],
+        expectTool: true,
+        maxSeconds: 5
     }
 ];
 
