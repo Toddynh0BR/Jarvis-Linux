@@ -87,7 +87,9 @@ function parseResults(
                 /<div[^>]+class="[^"]*result__snippet[^"]*"[^>]*>([\s\S]*?)<\/div>/i
             );
 
-        const url = decodeHtml(linkMatch[1]);
+        const url = resolveResultUrl(
+            decodeHtml(linkMatch[1])
+        );
 
         if (!/^https?:\/\//i.test(url)) continue;
 
@@ -103,6 +105,28 @@ function parseResults(
     }
 
     return results;
+}
+
+function resolveResultUrl(value: string): string {
+    if (/^https?:\/\//i.test(value)) {
+        return value;
+    }
+
+    try {
+        const candidate = new URL(
+            value,
+            "https://html.duckduckgo.com"
+        );
+        const target = candidate.searchParams.get("uddg");
+
+        if (target) {
+            return decodeURIComponent(target);
+        }
+    } catch {
+        return value;
+    }
+
+    return value;
 }
 
 function stripHtml(value: string): string {
