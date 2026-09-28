@@ -126,6 +126,116 @@ const openUrl: JarvisTool = {
     }
 };
 
+const searchWebTool: JarvisTool = {
+    name: "searchWeb",
+    description:
+        "Pesquisa informações atuais na internet. Use obrigatoriamente para notícias, fatos atuais, pessoas em cargos atuais, eleições, preços, versões recentes, eventos recentes ou quando o usuário pedir para pesquisar, verificar ou descobrir algo na internet.",
+    parameters: {
+        type: "object",
+        properties: {
+            query: {
+                type: "string",
+                description: "Consulta objetiva para pesquisa na internet."
+            },
+            limit: {
+                type: "number",
+                description: "Quantidade de resultados desejada, entre 1 e 8."
+            }
+        },
+        required: ["query"]
+    },
+    async execute(args) {
+        try {
+            const result = await searchWeb(
+                String(args.query ?? "").trim(),
+                Number(args.limit ?? 5)
+            );
+
+            return JSON.stringify(result);
+        } catch (error: any) {
+            return JSON.stringify({
+                success: false,
+                error: error?.message ?? String(error)
+            });
+        }
+    }
+};
+
+const getMemory: JarvisTool = {
+    name: "getMemory",
+    description:
+        "Consulta memórias persistentes sobre o usuário. Use quando a resposta depender de uma preferência, dado pessoal ou projeto que o usuário tenha informado anteriormente.",
+    parameters: {
+        type: "object",
+        properties: {
+            query: {
+                type: "string",
+                description: "Tema ou informação que deve ser recuperada."
+            }
+        },
+        required: ["query"]
+    },
+    async execute(args) {
+        const memories = listMemories(30);
+        const query = String(args.query ?? "").trim().toLocaleLowerCase("pt-BR");
+
+        const filtered = query
+            ? memories.filter(memory =>
+                (
+                    memory.category + " " +
+                    memory.key + " " +
+                    memory.value
+                ).toLocaleLowerCase("pt-BR").includes(query)
+            )
+            : memories;
+
+        return JSON.stringify({
+            memories: filtered.slice(0, 12)
+        });
+    }
+};
+
+const remember: JarvisTool = {
+    name: "remember",
+    description:
+        "Salva uma informação explicitamente fornecida pelo usuário para uso futuro. Nunca armazene senhas, tokens, chaves privadas ou dados financeiros sensíveis.",
+    parameters: {
+        type: "object",
+        properties: {
+            category: {
+                type: "string",
+                description: "Categoria da memória."
+            },
+            key: {
+                type: "string",
+                description: "Identificador estável da memória."
+            },
+            value: {
+                type: "string",
+                description: "Informação a ser lembrada."
+            },
+            importance: {
+                type: "number",
+                description: "Importância entre 1 e 10."
+            }
+        },
+        required: ["category", "key", "value"]
+    },
+    async execute(args) {
+        saveMemory(
+            String(args.category ?? "general"),
+            String(args.key ?? "general.note"),
+            String(args.value ?? ""),
+            Number(args.importance ?? 5)
+        );
+
+        return JSON.stringify({
+            success: true,
+            message: "Memória salva."
+        });
+    }
+};
+
 const listTools: JarvisTool = {
     name: "listAvailableTools",
     description:
@@ -147,6 +257,9 @@ const listTools: JarvisTool = {
 export const toolRegistry: JarvisTool[] = [
     getSystemStatus,
     openUrl,
+    searchWebTool,
+    getMemory,
+    remember,
     listTools
 ];
 
