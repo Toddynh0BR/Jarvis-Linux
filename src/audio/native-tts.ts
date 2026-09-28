@@ -345,6 +345,7 @@ export class NativeQwenTTS {
             return spawn(
                 "pw-play",
                 [
+                    "--raw",
                     "--rate=24000",
                     "--format=s16",
                     "--channels=1",
