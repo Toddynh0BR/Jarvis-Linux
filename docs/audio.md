@@ -88,7 +88,7 @@ O `.qvoice` fica em:
 
 A criação do perfil requer o modelo Base 0.6B apenas durante a preparação. O modelo Base não fica no caminho de síntese do Jarvis em execução; o servidor continua usando o CustomVoice 0.6B.
 
-O Qwen3-TTS recomenda uma voz clonada persistente quando se busca consistência de identidade vocal, e o modo `--icl-only` preserva maior fidelidade de timbre/prosódia que usar apenas um speaker preset. citeturn1search0turn2search3
+O Qwen3-TTS recomenda uma voz clonada persistente quando se busca consistência de identidade vocal, e o modo `--icl-only` preserva maior fidelidade de timbre/prosódia que usar apenas um speaker preset.
 
 ## Objetivo de latência
 
