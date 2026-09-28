@@ -4,6 +4,13 @@ import {
     getLatestSystemInfo,
     initializeDatabase
 } from "../database/database";
+import {
+    deleteMemory,
+    findRelevantMemories,
+    listMemories,
+    saveMemory
+} from "../memory/memory";
+import { searchWeb } from "../web/search";
 
 export interface ToolContext {
     cwd: string;
