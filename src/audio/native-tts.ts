@@ -120,29 +120,30 @@ export class NativeQwenTTS {
                     language: "Portuguese",
                     speaker: VOICE,
                     temperature: 0.35,
-                    topK: 30,
-                    topP: 0.9,
-                    repetitionPenalty: 1.05
+                    top_k: 30,
+                    top_p: 0.9,
+                    rep_penalty: 1.05
                 })
             }
         );
 
         if (!response.ok || !response.body) {
+            let details = "";
+
+            try {
+                details = (await response.text()).trim();
+            } catch {
+                // O corpo do erro pode não estar disponível.
+            }
+
             throw new Error(
                 "Servidor nativo de TTS respondeu com HTTP " +
-                String(response.status)
+                String(response.status) +
+                (details ? ": " + details : "")
             );
         }
 
-        const firstByteAt = Date.now();
-
-        console.log(
-            "[Audio] TTS nativo: primeiro áudio recebido em " +
-            String(firstByteAt - requestStartedAt) +
-            " ms."
-        );
-
-        await this.playStream(response.body);
+        await this.playStream(response.body, requestStartedAt);
     }
 
     async stop(): Promise<void> {
@@ -209,7 +210,8 @@ export class NativeQwenTTS {
     }
 
     private async playStream(
-        body: ReadableStream<Uint8Array>
+        body: ReadableStream<Uint8Array>,
+        requestStartedAt: number
     ): Promise<void> {
         const playbackStartedAt = Date.now();
         let firstChunk = true;
@@ -280,7 +282,9 @@ export class NativeQwenTTS {
                     firstChunk = false;
 
                     console.log(
-                        "[Audio] TTS nativo: primeiro chunk encaminhado ao player em " +
+                        "[Audio] TTS nativo: primeiro áudio recebido em " +
+                        String(Date.now() - requestStartedAt) +
+                        " ms; chunk encaminhado ao player em " +
                         String(Date.now() - playbackStartedAt) +
                         " ms."
                     );
