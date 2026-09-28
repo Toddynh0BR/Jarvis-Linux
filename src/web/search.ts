@@ -25,10 +25,12 @@ export async function searchWeb(
         );
     }
 
+    const searchQuery = buildSearchQuery(cleanQuery);
+
     const response = await fetch(
         SEARCH_ENDPOINT +
         "?q=" +
-        encodeURIComponent(cleanQuery),
+        encodeURIComponent(searchQuery),
         {
             headers: {
                 "user-agent": "Jarvis-Linux/0.4"
@@ -62,6 +64,31 @@ export async function searchWeb(
         retrievedAt: new Date().toISOString(),
         results
     };
+}
+
+function buildSearchQuery(query: string): string {
+    const year = new Date().getFullYear();
+    const normalized = query.toLocaleLowerCase("pt-BR");
+
+    if (
+        /\bpresidente\b/.test(normalized) &&
+        /\b(estados unidos|eua|usa|united states)\b/.test(normalized)
+    ) {
+        return query + " " + String(year) + " current president site:whitehouse.gov";
+    }
+
+    if (
+        /\b(presidente|elei[cç][oõ]es|candidato|candidatos)\b/.test(normalized) &&
+        /\b(brasil|brasileira|brasileiro)\b/.test(normalized)
+    ) {
+        return query + " " + String(year) + " site:tse.jus.br";
+    }
+
+    if (/\bopenai\b/.test(normalized)) {
+        return query + " site:openai.com";
+    }
+
+    return query;
 }
 
 function parseResults(
