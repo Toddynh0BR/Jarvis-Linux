@@ -38,6 +38,26 @@ const TTS_NATIVE_MODEL = path.join(
     "qwen3-tts-0.6b"
 );
 
+const TTS_NATIVE_BASE_MODEL = path.join(
+    TTS_NATIVE_SOURCE,
+    "qwen3-tts-0.6b-base"
+);
+
+const TTS_NATIVE_VOICE_DIRECTORY = path.join(
+    TTS_NATIVE_HOME,
+    "voices"
+);
+
+const TTS_NATIVE_VOICE_PROFILE = path.join(
+    TTS_NATIVE_VOICE_DIRECTORY,
+    "jarvis.qvoice"
+);
+
+const TTS_REFERENCE_PATH = path.join(
+    TTS_HOME,
+    "jarvis_voice_reference_v2.wav"
+);
+
 async function run(
     command: string,
     args: string[],
@@ -175,6 +195,76 @@ async function installNativeTTS(): Promise<void> {
     console.log("✓ Streaming de áudio será usado para reduzir o tempo até a primeira fala.");
 }
 
+async function prepareNativeJarvisVoice(): Promise<void> {
+    try {
+        await fs.access(TTS_NATIVE_VOICE_PROFILE);
+        console.log("✓ Perfil de voz nativo do Jarvis já existe.");
+        return;
+    } catch {
+        // O perfil ainda precisa ser criado.
+    }
+
+    try {
+        await fs.access(TTS_REFERENCE_PATH);
+    } catch {
+        console.log(
+            "A referência vocal do Jarvis ainda não existe. " +
+            "O backend nativo continuará usando o speaker padrão até que uma referência seja criada."
+        );
+        return;
+    }
+
+    try {
+        await fs.access(
+            path.join(TTS_NATIVE_BASE_MODEL, "config.json")
+        );
+    } catch {
+        console.log("Baixando o modelo Base 0.6B para criar a voz personalizada...");
+
+        if (
+            (await run(
+                "./download_model.sh",
+                ["--model", "base-small"],
+                TTS_NATIVE_SOURCE
+            )) !== 0
+        ) {
+            throw new Error(
+                "Falha ao baixar o modelo Base 0.6B necessário para criar a voz personalizada."
+            );
+        }
+    }
+
+    await fs.mkdir(TTS_NATIVE_VOICE_DIRECTORY, { recursive: true });
+
+    console.log("Criando o perfil vocal personalizado do Jarvis...");
+
+    if (
+        (await run(
+            TTS_NATIVE_BINARY,
+            [
+                "-d",
+                TTS_NATIVE_BASE_MODEL,
+                "--ref-audio",
+                TTS_REFERENCE_PATH,
+                "-l",
+                "Portuguese",
+                "--voice-name",
+                "Jarvis",
+                "--save-voice",
+                TTS_NATIVE_VOICE_PROFILE,
+                "--silent"
+            ],
+            TTS_NATIVE_SOURCE
+        )) !== 0
+    ) {
+        throw new Error(
+            "Falha ao criar o perfil vocal personalizado do Jarvis."
+        );
+    }
+
+    console.log("✓ Perfil vocal personalizado do Jarvis criado.");
+}
+
 async function installSystemSox(): Promise<void> {
     if (await commandExists("sox")) {
         console.log("✓ SoX já está instalado.");
@@ -285,6 +375,8 @@ async function main(): Promise<void> {
     ) {
         throw new Error("Falha ao instalar qwen-tts.");
     }
+
+    await prepareNativeJarvisVoice();
 
     console.log("\n✓ Ambiente de voz instalado.");
     console.log(
