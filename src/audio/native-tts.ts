@@ -4,6 +4,7 @@ import * as net from "node:net";
 import * as os from "node:os";
 import * as path from "node:path";
 import { Readable } from "node:stream";
+import { commandExists } from "../setup/diagnostics";
 
 const DEFAULT_HOME = path.join(
     os.homedir(),
@@ -119,10 +120,11 @@ export class NativeQwenTTS {
                     text: cleanText,
                     language: "Portuguese",
                     speaker: VOICE,
-                    temperature: 0.35,
-                    top_k: 30,
-                    top_p: 0.9,
-                    rep_penalty: 1.05
+                    temperature: 0.5,
+                    top_k: 50,
+                    top_p: 1.0,
+                    rep_penalty: 1.05,
+                    seed: 42
                 })
             }
         );
@@ -215,27 +217,12 @@ export class NativeQwenTTS {
     ): Promise<void> {
         const playbackStartedAt = Date.now();
         let firstChunk = true;
+        let chunkCount = 0;
+        let totalBytes = 0;
+        let maxChunkGapMs = 0;
+        let lastChunkAt = 0;
 
-        const player = spawn(
-            "play",
-            [
-                "-q",
-                "-t",
-                "raw",
-                "-r",
-                "24000",
-                "-e",
-                "signed",
-                "-b",
-                "16",
-                "-c",
-                "1",
-                "-"
-            ],
-            {
-                stdio: ["pipe", "ignore", "ignore"]
-            }
-        );
+        const player = await this.createPlayer();
 
         this.player = player;
 
@@ -266,26 +253,66 @@ export class NativeQwenTTS {
 
             player.on("close", code => {
                 if (code === 0) {
-                    finish();
-                } else {
-                    finish(
-                        new Error(
-                            "O reprodutor de áudio encerrou com código " +
-                            String(code)
-                        )
+                    if (chunkCount === 0) {
+                        finish(
+                            new Error(
+                                "O servidor nativo encerrou o streaming sem enviar áudio."
+                            )
+                        );
+                        return;
+                    }
+
+                    const audioDurationMs =
+                        totalBytes / (24_000 * 2) * 1000;
+
+                    console.log(
+                        "[Audio] TTS nativo: " +
+                        String(chunkCount) +
+                        " chunks, " +
+                        String(Math.round(totalBytes / 1024)) +
+                        " KB, aproximadamente " +
+                        (audioDurationMs / 1000).toFixed(2) +
+                        " s de áudio; maior intervalo entre chunks: " +
+                        String(maxChunkGapMs) +
+                        " ms."
                     );
+
+                    finish();
+                    return;
                 }
+
+                finish(
+                    new Error(
+                        "O reprodutor de áudio encerrou com código " +
+                        String(code)
+                    )
+                );
             });
 
             stream.on("data", chunk => {
+                const now = Date.now();
+                const size = Buffer.byteLength(chunk);
+
+                chunkCount += 1;
+                totalBytes += size;
+
+                if (lastChunkAt > 0) {
+                    maxChunkGapMs = Math.max(
+                        maxChunkGapMs,
+                        now - lastChunkAt
+                    );
+                }
+
+                lastChunkAt = now;
+
                 if (firstChunk) {
                     firstChunk = false;
 
                     console.log(
                         "[Audio] TTS nativo: primeiro áudio recebido em " +
-                        String(Date.now() - requestStartedAt) +
+                        String(now - requestStartedAt) +
                         " ms; chunk encaminhado ao player em " +
-                        String(Date.now() - playbackStartedAt) +
+                        String(now - playbackStartedAt) +
                         " ms."
                     );
                 }
@@ -312,7 +339,44 @@ export class NativeQwenTTS {
 
         this.player = null;
     }
-}
+
+    private async createPlayer(): Promise<ChildProcess> {
+        if (await commandExists("pw-play")) {
+            return spawn(
+                "pw-play",
+                [
+                    "--rate=24000",
+                    "--format=s16",
+                    "--channels=1",
+                    "-"
+                ],
+                {
+                    stdio: ["pipe", "ignore", "ignore"]
+                }
+            );
+        }
+
+        return spawn(
+            "play",
+            [
+                "-q",
+                "-t",
+                "raw",
+                "-r",
+                "24000",
+                "-e",
+                "signed",
+                "-b",
+                "16",
+                "-c",
+                "1",
+                "-"
+            ],
+            {
+                stdio: ["pipe", "ignore", "ignore"]
+            }
+        );
+    }
 
 async function waitForPort(
     host: string,
