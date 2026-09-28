@@ -90,6 +90,10 @@ export function classifyMessage(message: string): RouteDecision {
         pattern.test(normalized)
     );
 
+    const systemToolMatch = TOOL_INTENT_PATTERNS.some(pattern =>
+        pattern.test(normalized)
+    );
+
     if (deepMatch) {
         return {
             mode: "extended",
@@ -125,6 +129,16 @@ export function classifyMessage(message: string): RouteDecision {
             mode: "extended",
             depth: "standard",
             reason: "informação atual ou solicitação explícita de pesquisa",
+            confidence: 0.95,
+            toolPreferred: true
+        };
+    }
+
+    if (systemToolMatch) {
+        return {
+            mode: "fast",
+            depth: "fast",
+            reason: "consulta determinística de ferramenta do sistema",
             confidence: 0.95,
             toolPreferred: true
         };
