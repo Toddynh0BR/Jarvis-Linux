@@ -15,6 +15,17 @@ const TOOL_INTENT_PATTERNS = [
     /\b(abra|abrir|feche|fechar|inicie|iniciar|execute|executar)\b/i
 ];
 
+const WEB_INTENT_PATTERNS = [
+    /\b(pesquise|pesquisar|pesquisa|busque|buscar|procure|procurar|verifique|verificar|descubra|descobrir)\b/i,
+    /\b(na internet|na web|online|not[ií]cias|not[ií]cia|atualizado|atualizada|atualizados|atualizadas|mais recente|mais recentes)\b/i,
+    /\b(hoje|agora|atualmente|atual|presidente|governador|prefeito|elei[cç][oõ]es|candidatos?)\b/i
+];
+
+const MEMORY_INTENT_PATTERNS = [
+    /\b(lembre|lembrar|lembra|memorize|memorizar|guarde|guardar|esque[cç]a|esquecer)\b/i,
+    /\b(o que|quais)\s+(voc[eê]|voce)\s+(lembra|sabe)\s+(sobre mim|de mim)\b/i
+];
+
 const FAST_PATTERNS = [
     /^(oi|olá|ola|hey|ei|bom dia|boa tarde|boa noite)\b/i,
     /^(como você está|como voce esta|tudo bem|como vai)\b/i,
@@ -52,9 +63,16 @@ export function classifyMessage(message: string): RouteDecision {
         return { mode: "fast", depth: "fast", reason: "mensagem vazia", confidence: 1 };
     }
 
-    const toolPreferred = TOOL_INTENT_PATTERNS.some(pattern =>
-        pattern.test(normalized)
-    );
+    const toolPreferred =
+        TOOL_INTENT_PATTERNS.some(pattern =>
+            pattern.test(normalized)
+        ) ||
+        WEB_INTENT_PATTERNS.some(pattern =>
+            pattern.test(normalized)
+        ) ||
+        MEMORY_INTENT_PATTERNS.some(pattern =>
+            pattern.test(normalized)
+        );
 
     const deepMatch = DEEP_PATTERNS.find(item =>
         item.pattern.test(normalized)
@@ -65,6 +83,10 @@ export function classifyMessage(message: string): RouteDecision {
     );
 
     const knowledgeMatch = KNOWLEDGE_PATTERNS.some(pattern =>
+        pattern.test(normalized)
+    );
+
+    const webMatch = WEB_INTENT_PATTERNS.some(pattern =>
         pattern.test(normalized)
     );
 
@@ -95,6 +117,16 @@ export function classifyMessage(message: string): RouteDecision {
             reason: "comando simples ou conversa casual",
             confidence: 0.9,
             toolPreferred
+        };
+    }
+
+    if (webMatch) {
+        return {
+            mode: "extended",
+            depth: "standard",
+            reason: "informação atual ou solicitação explícita de pesquisa",
+            confidence: 0.95,
+            toolPreferred: true
         };
     }
 
