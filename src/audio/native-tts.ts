@@ -37,6 +37,14 @@ const BINARY_PATH = path.join(
 const VOICE =
     process.env.JARVIS_TTS_NATIVE_VOICE ?? "ryan";
 
+const VOICE_PROFILE =
+    process.env.JARVIS_TTS_NATIVE_VOICE_PROFILE ??
+    path.join(
+        DEFAULT_HOME,
+        "voices",
+        "jarvis.qvoice"
+    );
+
 const THREADS = Number(
     process.env.JARVIS_TTS_NATIVE_THREADS ?? "4"
 );
@@ -179,6 +187,17 @@ export class NativeQwenTTS {
             "-j",
             String(THREADS)
         ];
+
+        try {
+            await fs.access(VOICE_PROFILE);
+            args.push(
+                "--load-voice",
+                VOICE_PROFILE,
+                "--icl-only"
+            );
+        } catch {
+            // Sem perfil personalizado, usa a voz preset configurada.
+        }
 
         if (QUANTIZATION === "int8") {
             args.push("--int8");
