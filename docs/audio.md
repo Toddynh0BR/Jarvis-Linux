@@ -50,9 +50,13 @@ Os modelos e o backend nativo ficam fora do repositório em:
 
 ## Configuração
 
-A voz padrão do backend nativo é `ryan`.
+O backend nativo usa um perfil vocal personalizado do Jarvis quando ele existe. O perfil é criado uma vez a partir da referência vocal brasileira gerada pelo VoiceDesign e salvo como `jarvis.qvoice`.
 
-É possível alterar sem modificar o código:
+O perfil personalizado é carregado sobre o modelo CustomVoice 0.6B com `--icl-only`, preservando a identidade vocal e a prosódia da referência entre as respostas. O projeto nativo documenta esse fluxo como a opção de maior fidelidade de timbre para uma voz personalizada.
+
+Sem o perfil, o backend continua funcionando com o speaker preset configurado, atualmente `ryan`, como fallback.
+
+É possível alterar o speaker fallback sem modificar o código:
 
 `JARVIS_TTS_NATIVE_VOICE="ryan" npm start`
 
@@ -60,11 +64,31 @@ O número de threads pode ser alterado com:
 
 `JARVIS_TTS_NATIVE_THREADS=4 npm start`
 
+O perfil vocal pode ser alterado com:
+
+`JARVIS_TTS_NATIVE_VOICE_PROFILE=/caminho/para/voz.qvoice npm start`
+
 A quantização pode ser alterada com:
 
 `JARVIS_TTS_NATIVE_QUANTIZATION=int8 npm start`
 
 Para o Ryzen 5 5600GT, o padrão é INT4 e quatro threads.
+
+## Voz do Jarvis
+
+A referência vocal usada para o perfil é descrita como uma voz masculina adulta brasileira, grave, quente, encorpada, controlada, elegante, muito articulada e com pouca dramaticidade. A intenção é reproduzir a presença de um assistente tecnológico sofisticado, sem tentar imitar exatamente a voz de um ator ou pessoa real.
+
+O fluxo de preparação é:
+
+`VoiceDesign 1.7B -> referência vocal em português brasileiro -> Base 0.6B -> jarvis.qvoice -> CustomVoice 0.6B`
+
+O `.qvoice` fica em:
+
+`~/.local/share/jarvis/tts-native/voices/jarvis.qvoice`
+
+A criação do perfil requer o modelo Base 0.6B apenas durante a preparação. O modelo Base não fica no caminho de síntese do Jarvis em execução; o servidor continua usando o CustomVoice 0.6B.
+
+O Qwen3-TTS recomenda uma voz clonada persistente quando se busca consistência de identidade vocal, e o modo `--icl-only` preserva maior fidelidade de timbre/prosódia que usar apenas um speaker preset. citeturn1search0turn2search3
 
 ## Objetivo de latência
 
