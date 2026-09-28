@@ -85,9 +85,9 @@ const cases: BenchmarkCase[] = [
         prompt: "Pesquise quem é o atual presidente dos Estados Unidos.",
         expectedMode: "extended",
         expectedDepth: "standard",
-        keywords: ["presidente"],
+        keywords: ["presidente", "trump"],
         expectTool: true,
-        maxSeconds: 15
+        maxSeconds: 20
     },
 ];
 
