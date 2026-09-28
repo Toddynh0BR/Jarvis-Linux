@@ -1,6 +1,6 @@
 {
   "name": "jarvis",
-  "version": "0.3",
+  "version": "0.4",
   "description": "Local AI assistant for Linux using Ollama and Qwen3.",
   "main": "dist/index.js",
   "scripts": {
