@@ -108,8 +108,8 @@ function containsLeakedMeta(answer: string): boolean {
 async function main(): Promise<void> {
     console.log(
         "\n╔══════════════════════════════════════════════╗\n" +
-        "║             JARVIS PHASE 2 TEST             ║\n" +
-        "║          Performance & Reasoning            ║\n" +
+        "║             JARVIS PHASE 4 TEST             ║\n" +
+        "║     Intelligence, Memory & Web Tools       ║\n" +
         "╚══════════════════════════════════════════════╝\n"
     );
 
@@ -301,7 +301,7 @@ async function main(): Promise<void> {
         "\n" +
         "Intenções de ferramenta detectadas: " +
         toolIntentPasses +
-        "/3\n" +
+        "/4\n" +
         "Casos dentro da meta de latência: " +
         performancePasses +
         "/" +
